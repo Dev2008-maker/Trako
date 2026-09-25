@@ -435,7 +435,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      tracking_count: { Args: { _bus_id: string }; Returns: number }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
