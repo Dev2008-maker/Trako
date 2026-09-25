@@ -2,14 +2,14 @@ import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Crosshair } from "lucide-react";
+import { Locate, Radio } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { getMapConfig } from "@/lib/maptiler.functions";
 import { PUNE_CENTER } from "@/lib/geo";
 import type { MapViewProps } from "./types";
 
 /**
- * The only module that talks to the map provider. Everything else uses the
- * declarative props below, so the provider can be swapped without UI changes.
+ * Rapido/Uber-quality MapLibre implementation using MapTiler Streets Light style.
  */
 export default function MapCanvas({
   center,
@@ -38,15 +38,18 @@ export default function MapCanvas({
     queryFn: () => getMapConfig(),
   });
 
+  const apiKey = import.meta.env['VITE_MAPTILER_API_KEY'] || "";
+  const styleUrl = config?.style || `https://api.maptiler.com/maps/streets-v2-light/style.json?key=${apiKey}`;
+
   const start = center ?? user ?? PUNE_CENTER;
 
   useEffect(() => {
-    if (!holder.current || map.current || !config?.style) return;
+    if (!holder.current || map.current || !styleUrl) return;
     const instance = new maplibregl.Map({
       container: holder.current,
-      style: config.style,
+      style: styleUrl,
       center: [start.lon, start.lat],
-      zoom: 13.4,
+      zoom: 14,
       attributionControl: { compact: true },
     });
     instance.on("load", () => setReady(true));
@@ -61,15 +64,15 @@ export default function MapCanvas({
       destMarker.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config?.style]);
+  }, [styleUrl]);
 
-  // keep the view following the requested centre
+  // Keep view following requested centre
   useEffect(() => {
     if (!ready || !map.current || !center) return;
     map.current.easeTo({ center: [center.lon, center.lat], duration: 600 });
   }, [ready, center?.lat, center?.lon]);
 
-  // passenger location
+  // User location marker: blue dot, white ring, animated pulse & green "Pickup Point" pill
   useEffect(() => {
     if (!ready || !map.current) return;
     if (!user) {
@@ -77,17 +80,27 @@ export default function MapCanvas({
       userMarker.current = null;
       return;
     }
-    const el = userMarker.current?.getElement() ?? document.createElement("div");
-    el.className = "trako-user-dot";
-    el.innerHTML = `<span class="trako-user-ring"></span><span class="trako-user-core"></span>`;
+
     if (!userMarker.current) {
-      userMarker.current = new maplibregl.Marker({ element: el }).setLngLat([user.lon, user.lat]).addTo(map.current);
+      const el = document.createElement("div");
+      el.className = "trako-pickup-pin";
+      el.innerHTML = `
+        <div class="trako-pickup-pill">Pickup Point</div>
+        <div class="trako-pickup-stem"></div>
+        <div class="trako-user-marker">
+          <div class="trako-user-pulse"></div>
+          <div class="trako-user-dot"></div>
+        </div>
+      `;
+      userMarker.current = new maplibregl.Marker({ element: el, anchor: "bottom" })
+        .setLngLat([user.lon, user.lat])
+        .addTo(map.current);
     } else {
       userMarker.current.setLngLat([user.lon, user.lat]);
     }
   }, [ready, user?.lat, user?.lon]);
 
-  // stops
+  // Stop markers
   useEffect(() => {
     if (!ready || !map.current) return;
     const seen = new Set<string>();
@@ -103,12 +116,16 @@ export default function MapCanvas({
           event.stopPropagation();
           clickHandler.current?.(stop.id);
         });
-        marker = new maplibregl.Marker({ element: el }).setLngLat([stop.lon, stop.lat]).addTo(map.current);
+        marker = new maplibregl.Marker({ element: el })
+          .setLngLat([stop.lon, stop.lat])
+          .addTo(map.current!);
         stopMarkers.current.set(stop.id, marker);
       } else {
         marker.setLngLat([stop.lon, stop.lat]);
       }
-      marker.getElement().className = selected ? "trako-stop trako-stop-selected" : "trako-stop";
+      marker.getElement().className = selected
+        ? "trako-stop trako-stop-selected"
+        : "trako-stop";
     }
     for (const [id, marker] of stopMarkers.current) {
       if (!seen.has(id)) {
@@ -118,7 +135,7 @@ export default function MapCanvas({
     }
   }, [ready, stops, selectedStopId]);
 
-  // buses (animate between updates)
+  // Live bus markers
   useEffect(() => {
     if (!ready || !map.current) return;
     const seen = new Set<string>();
@@ -127,7 +144,9 @@ export default function MapCanvas({
       let marker = busMarkers.current.get(bus.id);
       if (!marker) {
         const el = document.createElement("div");
-        marker = new maplibregl.Marker({ element: el }).setLngLat([bus.lon, bus.lat]).addTo(map.current);
+        marker = new maplibregl.Marker({ element: el })
+          .setLngLat([bus.lon, bus.lat])
+          .addTo(map.current!);
         busMarkers.current.set(bus.id, marker);
       }
       const el = marker.getElement();
@@ -147,7 +166,7 @@ export default function MapCanvas({
     }
   }, [ready, buses]);
 
-  // destination
+  // Destination marker
   useEffect(() => {
     if (!ready || !map.current) return;
     if (!destination) {
@@ -166,7 +185,7 @@ export default function MapCanvas({
     }
   }, [ready, destination?.lat, destination?.lon]);
 
-  // route line
+  // Route polylines
   useEffect(() => {
     const instance = map.current;
     if (!ready || !instance) return;
@@ -192,12 +211,12 @@ export default function MapCanvas({
 
   function recenter() {
     const target = user ?? center ?? PUNE_CENTER;
-    map.current?.easeTo({ center: [target.lon, target.lat], zoom: 14.5, duration: 700 });
+    map.current?.easeTo({ center: [target.lon, target.lat], zoom: 15, duration: 600 });
   }
 
   if (isError) {
     return (
-      <div className={`grid place-items-center bg-tint-strong px-6 text-center ${className}`}>
+      <div className={`grid place-items-center bg-muted/30 px-6 text-center ${className}`}>
         <p className="max-w-xs text-sm text-muted-foreground">
           The map could not be loaded right now. Nearby stops and schedules below still work.
         </p>
@@ -208,16 +227,26 @@ export default function MapCanvas({
   return (
     <div className={`relative ${className}`}>
       <div ref={holder} className="!absolute inset-0" />
-      {!ready && <div className="absolute inset-0 animate-pulse bg-tint-strong" />}
+      {!ready && <div className="absolute inset-0 animate-pulse bg-muted/30" />}
+
+      {/* Floating GPS button on top-right */}
       <button
         type="button"
         onClick={recenter}
         aria-label="Recentre map on my location"
-        className="trako-float absolute right-3 bottom-3 grid size-11 place-items-center text-primary active:scale-95"
+        className="absolute top-4 right-4 z-10 grid size-11 place-items-center rounded-full bg-white text-primary shadow-md hover:bg-slate-50 active:scale-95 transition-transform"
       >
-        <Crosshair className="size-5" />
+        <Locate className="size-5" />
       </button>
-      <style>{markerStyles}</style>
+
+      {/* Floating purple Track Bus FAB on lower-right of the map */}
+      <Link
+        to="/trips"
+        className="absolute bottom-8 right-4 z-10 flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-purple-950/30 hover:bg-primary/90 active:scale-95 transition-transform"
+      >
+        <Radio className="size-4" />
+        Track Bus
+      </Link>
     </div>
   );
 }
@@ -237,16 +266,3 @@ function animateMarker(
   };
   requestAnimationFrame(step);
 }
-
-const markerStyles = `
-.trako-user-dot { position: relative; width: 22px; height: 22px; }
-.trako-user-ring { position:absolute; inset:0; border-radius:9999px; background: oklch(0.62 0.31 317 / 0.25); animation: trako-ring 2s ease-out infinite; }
-.trako-user-core { position:absolute; inset:6px; border-radius:9999px; background:#800080; box-shadow:0 0 0 2px #fff; }
-@keyframes trako-ring { 0% { transform: scale(0.6); opacity:.8 } 100% { transform: scale(1.5); opacity:0 } }
-.trako-stop { width:14px; height:14px; border-radius:9999px; background:#fff; border:3px solid #BA55D3; cursor:pointer; padding:0; }
-.trako-stop-selected { width:20px; height:20px; border-color:#800080; border-width:5px; box-shadow:0 0 0 4px oklch(0.62 0.31 317 / 0.2); }
-.trako-bus { display:grid; place-items:center; min-width:38px; height:26px; padding:0 8px; border-radius:9999px; font:600 12px/1 "DM Sans", sans-serif; color:#fff; white-space:nowrap; }
-.trako-bus-live { background:#BF00FF; box-shadow:0 0 0 4px oklch(0.62 0.31 317 / 0.22); }
-.trako-bus-stale { background:#B39EB5; }
-.trako-destination { width:0; height:0; border-left:8px solid transparent; border-right:8px solid transparent; border-bottom:18px solid #800080; }
-`;

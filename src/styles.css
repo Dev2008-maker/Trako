@@ -155,3 +155,68 @@
     transform: scale(0.82);
   }
 }
+
+/* Rapido / Uber map pin & user marker styles */
+.trako-pickup-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.trako-pickup-pill {
+  background-color: #22C55E;
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+}
+
+.trako-pickup-stem {
+  width: 2px;
+  height: 8px;
+  background-color: #22C55E;
+}
+
+.trako-user-marker {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trako-user-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: #3B82F6;
+  box-shadow: 0 0 0 3px #FFFFFF, 0 2px 6px rgba(59, 130, 246, 0.4);
+  z-index: 2;
+}
+
+.trako-user-pulse {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: rgba(59, 130, 246, 0.25);
+  animation: trako-user-pulse-anim 2s infinite ease-out;
+  z-index: 1;
+}
+
+@keyframes trako-user-pulse-anim {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
