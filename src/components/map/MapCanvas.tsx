@@ -207,7 +207,7 @@ export default function MapCanvas({
 
   return (
     <div className={`relative ${className}`}>
-      <div ref={holder} className="absolute inset-0" />
+      <div ref={holder} className="!absolute inset-0" />
       {!ready && <div className="absolute inset-0 animate-pulse bg-tint-strong" />}
       <button
         type="button"
