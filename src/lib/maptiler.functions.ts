@@ -1,35 +1,19 @@
 import { createServerFn } from "@tanstack/react-start";
 
 export type MapConfig = {
-  style: {
-    version: 8;
-    sources: {
-      streets: {
-        type: "raster";
-        tiles: string[];
-        tileSize: 256;
-        attribution: string;
-      };
-    };
-    layers: Array<{ id: string; type: "raster"; source: "streets" }>;
-  };
+  style: string | Record<string, unknown>;
 };
 
-/** A dependable street-map style. Place search can still use MapTiler when configured. */
+/** Production light map style. Match Rapido / Ola clean map style. */
 export const getMapConfig = createServerFn({ method: "GET" }).handler(async (): Promise<MapConfig> => {
+  const key = process.env["MAPTILER_API_KEY"];
+  if (key) {
+    return {
+      style: `https://api.maptiler.com/maps/base-light/style.json?key=${key}`,
+    };
+  }
   return {
-    style: {
-      version: 8,
-      sources: {
-        streets: {
-          type: "raster",
-          tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-          tileSize: 256,
-          attribution: "© OpenStreetMap contributors",
-        },
-      },
-      layers: [{ id: "streets", type: "raster", source: "streets" }],
-    },
+    style: "/trako-map-style.json",
   };
 });
 

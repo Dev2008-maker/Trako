@@ -128,10 +128,26 @@
 }
 
 @utility trako-sheet {
-  background-color: var(--color-card);
-  border-top-left-radius: var(--radius-3xl);
-  border-top-right-radius: var(--radius-3xl);
-  box-shadow: var(--shadow-sheet);
+  /* Frosted glass bottom sheet — 32px top corners, shadow attached to map */
+  background-color: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-top-left-radius: 32px;
+  border-top-right-radius: 32px;
+  box-shadow: 0 -6px 32px rgba(128, 0, 128, 0.10), 0 -1px 0 rgba(0, 0, 0, 0.04);
+  position: relative;
+}
+
+/* Drag handle — rendered by the sheet ::before, inside the normal flow */
+.trako-sheet::before {
+  content: "";
+  display: block;
+  width: 36px;
+  height: 4px;
+  background-color: #D1D5DB;
+  border-radius: 9999px;
+  margin: 12px auto 0;
+  flex-shrink: 0;
 }
 
 @utility trako-float {
@@ -156,67 +172,432 @@
   }
 }
 
-/* Rapido / Uber map pin & user marker styles */
+/* ==========================================================================
+   TRAKO — Rapido Production Map Polish (Phase 2.3B)
+   Clean, airy, soft, translucent-looking map with TRAKO branding
+   ========================================================================== */
+
+/* ── Map canvas softening filter ───────────────────────────────────────── */
+/*
+ * Applied to .trako-map-canvas and .maplibregl-canvas-container.
+ * Softens the map canvas tiles by ~10-15%, making it feel like a clean, light,
+ * slightly translucent layer underneath the floating UI.
+ * DOM overlay markers (GPS dot, pickup pill, stops, buses) are sibling elements
+ * and are NOT affected — they stay fully saturated, crisp, and high contrast.
+ */
+.trako-map-canvas {
+  background-color: #FAF8F5;
+}
+
+.trako-map-canvas .maplibregl-canvas-container {
+  filter: saturate(0.70) brightness(1.03) contrast(0.92);
+}
+
+/* ── GPS / Pickup pin assembly ─────────────────────────────────────────── */
 .trako-pickup-pin {
+  position: relative;
+  width: 0;
+  height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  user-select: none;
+  will-change: transform;
+}
+
+/* Floating pill wrapper sitting right above GPS dot */
+.trako-pickup-wrapper {
+  position: absolute;
+  bottom: 12px;
+  left: 0;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: trako-pickup-bounce 2.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Green pill — matches reference: white bold text, rounded capsule */
+.trako-pickup-pill {
+  display: inline-flex;
+  align-items: center;
+  background: linear-gradient(135deg, #16A34A 0%, #15803D 100%);
+  color: #FFFFFF;
+  font-family: var(--font-display, "Sora", sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 4px 11px;
+  border-radius: 9999px;
+  box-shadow:
+    0 4px 12px rgba(22, 163, 74, 0.35),
+    0 1px 3px rgba(0, 0, 0, 0.10);
+  border: 1.5px solid rgba(255, 255, 255, 0.90);
+  white-space: nowrap;
+}
+
+/* Downward caret pointer connecting pill to GPS dot */
+.trako-pickup-pointer {
+  width: 0;
+  height: 0;
+  border-left: 4.5px solid transparent;
+  border-right: 4.5px solid transparent;
+  border-top: 5.5px solid #15803D;
+  margin-top: -1px;
+  filter: drop-shadow(0 1.5px 2px rgba(0, 0, 0, 0.12));
+}
+
+@keyframes trako-pickup-bounce {
+  0%, 100% { transform: translateY(0);  }
+  50%       { transform: translateY(-4px); }
+}
+
+/* ── GPS dot assembly ──────────────────────────────────────────────────── */
+.trako-user-marker {
+  position: absolute;
+  width: 0;
+  height: 0;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* Soft blue accuracy halo — clearly visible against light map */
+.trako-accuracy-circle {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  left: -40px;
+  top: -40px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(37, 99, 235, 0.13) 0%,
+    rgba(37, 99, 235, 0.04) 60%,
+    transparent 100%
+  );
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  pointer-events: none;
+}
+
+/* Subtle 2-second pulse ripple wave */
+.trako-user-pulse {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  left: -15px;
+  top: -15px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.32);
+  animation: trako-gps-ripple 2s ease-out infinite;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Blue center dot — crisp white ring — white inner highlight */
+.trako-user-dot {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: -8px;
+  top: -8px;
+  border-radius: 50%;
+  background: #2563EB;
+  box-shadow:
+    0 0 0 2.5px #FFFFFF,
+    0 2px 8px rgba(37, 99, 235, 0.50);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* White center highlight */
+.trako-user-dot::after {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+@keyframes trako-gps-ripple {
+  0%   { transform: scale(0.6); opacity: 0.85; }
+  75%  { transform: scale(2.6); opacity: 0; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* ── Bus stop markers ──────────────────────────────────────────────────── */
+/* Normal stops: small purple markers, not oversized */
+.trako-stop {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 2.5px solid #800080;
+  opacity: 0.85;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
+  cursor: pointer;
+  transition:
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity   0.2s ease,
+    box-shadow 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  position: relative;
+}
+
+.trako-stop:hover {
+  opacity: 1;
+  transform: scale(1.25);
+  box-shadow: 0 2px 8px rgba(128, 0, 128, 0.35);
+}
+
+/* Selected stop: slightly larger purple marker with soft glow */
+.trako-stop-selected {
+  width: 20px;
+  height: 20px;
+  background: #800080;
+  border: 2.5px solid #FFFFFF;
+  opacity: 1 !important;
+  box-shadow:
+    0 0 0 3.5px rgba(128, 0, 128, 0.22),
+    0 3px 12px rgba(128, 0, 128, 0.40);
+  transform: scale(1.05);
+  z-index: 10;
+}
+
+/* White center dot inside selected stop */
+.trako-stop-selected::after {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #FFFFFF;
+}
+
+/* Tooltip callout above selected stop */
+.trako-stop-callout {
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1E1B4B;
+  color: #FFFFFF;
+  font-family: var(--font-display, "Sora", sans-serif);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
+
+.trako-stop-callout::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 3.5px solid transparent;
+  border-top-color: #1E1B4B;
+}
+
+/* ── Live / stale bus badges ───────────────────────────────────────────── */
+.trako-bus {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  font-family: var(--font-display, "Sora", sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+}
+
+.trako-bus-live {
+  background: linear-gradient(135deg, #800080, #9333EA);
+  color: #FFFFFF;
+}
+
+.trako-bus-live::before {
+  content: "";
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background: #22C55E;
+  box-shadow: 0 0 6px #22C55E;
+  animation: live-pulse 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.trako-bus-stale {
+  background: #64748B;
+  color: #FFFFFF;
+}
+
+.trako-bus-stale::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #CBD5E1;
+  flex-shrink: 0;
+}
+
+.trako-bus[data-demo="true"]::after {
+  content: "DEMO";
+  font-size: 8px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.25);
+  padding: 1px 4px;
+  border-radius: 4px;
+  margin-left: 2px;
+}
+
+/* ── Destination marker ────────────────────────────────────────────────── */
+.trako-destination {
   display: flex;
   flex-direction: column;
   align-items: center;
   pointer-events: none;
 }
 
-.trako-pickup-pill {
-  background-color: #22C55E;
+.trako-destination-pill {
+  background: linear-gradient(135deg, #DC2626, #EF4444);
   color: #FFFFFF;
+  font-family: var(--font-display, "Sora", sans-serif);
   font-size: 11px;
   font-weight: 700;
   padding: 4px 10px;
   border-radius: 9999px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.38);
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
   white-space: nowrap;
 }
 
-.trako-pickup-stem {
-  width: 2px;
-  height: 8px;
-  background-color: #22C55E;
+.trako-destination-pointer {
+  width: 0;
+  height: 0;
+  border-left: 4.5px solid transparent;
+  border-right: 4.5px solid transparent;
+  border-top: 6px solid #DC2626;
+  margin-top: -1px;
 }
 
-.trako-user-marker {
-  position: relative;
-  width: 24px;
-  height: 24px;
-  display: flex;
+.trako-destination-pin {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #DC2626;
+  box-shadow: 0 0 0 2.5px #FFFFFF, 0 2px 6px rgba(220, 38, 38, 0.45);
+  margin-top: 2px;
+}
+
+/* ── Floating GPS button ───────────────────────────────────────────────── */
+.trako-gps-btn {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.90);
+  color: #800080;
+  border: 1px solid rgba(255, 255, 255, 0.70);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  outline: 0px solid rgba(128, 0, 128, 0);
+  outline-offset: 0px;
+}
+
+.trako-gps-btn:hover {
+  background: #FFFFFF;
+  box-shadow:
+    0 6px 18px rgba(128, 0, 128, 0.15),
+    0 2px 5px rgba(0, 0, 0, 0.06);
+}
+
+.trako-gps-btn:active {
+  transform: scale(0.92);
+  outline: 5px solid rgba(128, 0, 128, 0.12);
+  outline-offset: 2px;
+}
+
+/* ── Floating Track Bus capsule ────────────────────────────────────────── */
+.trako-track-btn {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: 9999px;
+  background: #800080;
+  background: linear-gradient(135deg, #800080 0%, #9333EA 100%);
+  color: #FFFFFF;
+  font-family: var(--font-display, "Sora", sans-serif);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  box-shadow:
+    0 4px 14px rgba(128, 0, 128, 0.32),
+    0 2px 4px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.20);
+  transition:
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.2s ease;
 }
 
-.trako-user-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background-color: #3B82F6;
-  box-shadow: 0 0 0 3px #FFFFFF, 0 2px 6px rgba(59, 130, 246, 0.4);
-  z-index: 2;
+.trako-track-btn:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 6px 18px rgba(128, 0, 128, 0.42),
+    0 3px 6px rgba(0, 0, 0, 0.10);
 }
 
-.trako-user-pulse {
-  position: absolute;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background-color: rgba(59, 130, 246, 0.25);
-  animation: trako-user-pulse-anim 2s infinite ease-out;
-  z-index: 1;
+.trako-track-btn:active {
+  transform: scale(0.95);
+  box-shadow:
+    0 2px 8px rgba(128, 0, 128, 0.25),
+    0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-@keyframes trako-user-pulse-anim {
-  0% {
-    transform: scale(0.6);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(1.6);
-    opacity: 0;
-  }
+/* ── MapLibre attribution polish ───────────────────────────────────────── */
+.maplibregl-ctrl-attrib {
+  background-color: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(8px) !important;
+  font-size: 9px !important;
+  border-top-left-radius: 8px !important;
+  padding: 2px 6px !important;
+  border: none !important;
 }
+
+.maplibregl-ctrl-attrib a {
+  color: #7B8794 !important;
+}
+
+
 
