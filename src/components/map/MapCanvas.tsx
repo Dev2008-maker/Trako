@@ -41,10 +41,10 @@ export default function MapCanvas({
   const start = center ?? user ?? PUNE_CENTER;
 
   useEffect(() => {
-    if (!holder.current || map.current || !config?.styleUrl) return;
+    if (!holder.current || map.current || !config?.style) return;
     const instance = new maplibregl.Map({
       container: holder.current,
-      style: config.styleUrl,
+      style: config.style,
       center: [start.lon, start.lat],
       zoom: 13.4,
       attributionControl: { compact: true },
@@ -61,7 +61,7 @@ export default function MapCanvas({
       destMarker.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config?.styleUrl]);
+  }, [config?.style]);
 
   // keep the view following the requested centre
   useEffect(() => {
@@ -195,7 +195,7 @@ export default function MapCanvas({
     map.current?.easeTo({ center: [target.lon, target.lat], zoom: 14.5, duration: 700 });
   }
 
-  if (isError || (config && !config.styleUrl)) {
+  if (isError) {
     return (
       <div className={`grid place-items-center bg-tint-strong px-6 text-center ${className}`}>
         <p className="max-w-xs text-sm text-muted-foreground">
@@ -207,7 +207,7 @@ export default function MapCanvas({
 
   return (
     <div className={`relative ${className}`}>
-      <div ref={holder} className="absolute inset-0" />
+      <div ref={holder} className="!absolute inset-0" />
       {!ready && <div className="absolute inset-0 animate-pulse bg-tint-strong" />}
       <button
         type="button"
