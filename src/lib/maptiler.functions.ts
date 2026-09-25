@@ -1,12 +1,36 @@
 import { createServerFn } from "@tanstack/react-start";
 
-export type MapConfig = { styleUrl: string | null };
+export type MapConfig = {
+  style: {
+    version: 8;
+    sources: {
+      streets: {
+        type: "raster";
+        tiles: string[];
+        tileSize: 256;
+        attribution: string;
+      };
+    };
+    layers: Array<{ id: string; type: "raster"; source: "streets" }>;
+  };
+};
 
-/** Style URL for the map tiles. Returns null when no map key is configured. */
+/** A dependable street-map style. Place search can still use MapTiler when configured. */
 export const getMapConfig = createServerFn({ method: "GET" }).handler(async (): Promise<MapConfig> => {
-  const key = process.env["MAPTILER_API_KEY"];
-  if (!key) return { styleUrl: null };
-  return { styleUrl: `https://api.maptiler.com/maps/streets-v2/style.json?key=${key}` };
+  return {
+    style: {
+      version: 8,
+      sources: {
+        streets: {
+          type: "raster",
+          tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+          tileSize: 256,
+          attribution: "© OpenStreetMap contributors",
+        },
+      },
+      layers: [{ id: "streets", type: "raster", source: "streets" }],
+    },
+  };
 });
 
 export type PlaceResult = {
