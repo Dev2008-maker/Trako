@@ -188,7 +188,7 @@ export function routeDetailQuery(routeId: string | undefined) {
           .select("coordinates")
           .eq("route_id", routeId!)
           .eq("direction", 0)
-          .limit(1),
+          .limit(1) as unknown as PromiseLike<{ data: { coordinates: [number, number][] }[] | null; error: { message: string } | null }>,
       );
       return {
         route: route ?? null,

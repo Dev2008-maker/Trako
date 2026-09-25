@@ -4,7 +4,7 @@ import type { MapViewProps } from "./types";
 
 const MapCanvas = lazy(() => import("./MapCanvas"));
 
-function MapSkeleton({ className = "" }: { className?: string }) {
+function MapSkeleton({ className = "" }: { className?: string | undefined }) {
   return <div className={`animate-pulse bg-tint-strong ${className}`} />;
 }
 
