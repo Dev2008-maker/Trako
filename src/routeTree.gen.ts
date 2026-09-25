@@ -10,33 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as NearbyRouteImport } from './routes/nearby'
+import { Route as StopStopIdRouteImport } from './routes/stop.$stopId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NearbyRoute = NearbyRouteImport.update({
+  id: '/nearby',
+  path: '/nearby',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StopStopIdRoute = StopStopIdRouteImport.update({
+  id: '/stop/$stopId',
+  path: '/stop/$stopId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/nearby': typeof NearbyRoute
+  '/stop/$stopId': typeof StopStopIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/nearby': typeof NearbyRoute
+  '/stop/$stopId': typeof StopStopIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/nearby': typeof NearbyRoute
+  '/stop/$stopId': typeof StopStopIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/nearby' | '/stop/$stopId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/nearby' | '/stop/$stopId'
+  id: '__root__' | '/' | '/nearby' | '/stop/$stopId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  NearbyRoute: typeof NearbyRoute
+  StopStopIdRoute: typeof StopStopIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +68,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/nearby': {
+      id: '/nearby'
+      path: '/nearby'
+      fullPath: '/nearby'
+      preLoaderRoute: typeof NearbyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stop/$stopId': {
+      id: '/stop/$stopId'
+      path: '/stop/$stopId'
+      fullPath: '/stop/$stopId'
+      preLoaderRoute: typeof StopStopIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  NearbyRoute: NearbyRoute,
+  StopStopIdRoute: StopStopIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
