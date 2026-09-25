@@ -12,7 +12,7 @@ export function AppShell({
 }: {
   children: ReactNode;
   title?: string;
-  subtitle?: string;
+  subtitle?: string | undefined;
   bare?: boolean;
 }) {
   const { user, loading } = useAuth();

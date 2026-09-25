@@ -7,7 +7,7 @@ const styles: Record<BusStatus, { label: string; className: string }> = {
   completed: { label: "COMPLETED", className: "bg-scheduled-soft text-scheduled" },
 };
 
-export function LiveStatusBadge({ status, demo }: { status: BusStatus; demo?: boolean }) {
+export function LiveStatusBadge({ status, demo }: { status: BusStatus; demo?: boolean | undefined }) {
   const style = styles[status];
   return (
     <span

@@ -10,7 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as NearbyRouteImport } from './routes/nearby'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as TripsRouteImport } from './routes/trips'
+import { Route as RoutesIndexRouteImport } from './routes/routes.index'
+import { Route as RoutesRouteIdRouteImport } from './routes/routes.$routeId'
 import { Route as StopStopIdRouteImport } from './routes/stop.$stopId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -18,9 +23,34 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NearbyRoute = NearbyRouteImport.update({
   id: '/nearby',
   path: '/nearby',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TripsRoute = TripsRouteImport.update({
+  id: '/trips',
+  path: '/trips',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoutesIndexRoute = RoutesIndexRouteImport.update({
+  id: '/routes/',
+  path: '/routes/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoutesRouteIdRoute = RoutesRouteIdRouteImport.update({
+  id: '/routes/$routeId',
+  path: '/routes/$routeId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StopStopIdRoute = StopStopIdRouteImport.update({
@@ -31,32 +61,77 @@ const StopStopIdRoute = StopStopIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/nearby': typeof NearbyRoute
+  '/profile': typeof ProfileRoute
+  '/trips': typeof TripsRoute
+  '/routes/$routeId': typeof RoutesRouteIdRoute
   '/stop/$stopId': typeof StopStopIdRoute
+  '/routes/': typeof RoutesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/nearby': typeof NearbyRoute
+  '/profile': typeof ProfileRoute
+  '/trips': typeof TripsRoute
+  '/routes/$routeId': typeof RoutesRouteIdRoute
   '/stop/$stopId': typeof StopStopIdRoute
+  '/routes': typeof RoutesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/nearby': typeof NearbyRoute
+  '/profile': typeof ProfileRoute
+  '/trips': typeof TripsRoute
+  '/routes/$routeId': typeof RoutesRouteIdRoute
   '/stop/$stopId': typeof StopStopIdRoute
+  '/routes/': typeof RoutesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/nearby' | '/stop/$stopId'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/nearby'
+    | '/profile'
+    | '/trips'
+    | '/routes/$routeId'
+    | '/stop/$stopId'
+    | '/routes/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/nearby' | '/stop/$stopId'
-  id: '__root__' | '/' | '/nearby' | '/stop/$stopId'
+  to:
+    | '/'
+    | '/auth'
+    | '/nearby'
+    | '/profile'
+    | '/trips'
+    | '/routes/$routeId'
+    | '/stop/$stopId'
+    | '/routes'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/nearby'
+    | '/profile'
+    | '/trips'
+    | '/routes/$routeId'
+    | '/stop/$stopId'
+    | '/routes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
   NearbyRoute: typeof NearbyRoute
+  ProfileRoute: typeof ProfileRoute
+  TripsRoute: typeof TripsRoute
+  RoutesRouteIdRoute: typeof RoutesRouteIdRoute
   StopStopIdRoute: typeof StopStopIdRoute
+  RoutesIndexRoute: typeof RoutesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -68,11 +143,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/nearby': {
       id: '/nearby'
       path: '/nearby'
       fullPath: '/nearby'
       preLoaderRoute: typeof NearbyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trips': {
+      id: '/trips'
+      path: '/trips'
+      fullPath: '/trips'
+      preLoaderRoute: typeof TripsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/routes/': {
+      id: '/routes/'
+      path: '/routes'
+      fullPath: '/routes/'
+      preLoaderRoute: typeof RoutesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/routes/$routeId': {
+      id: '/routes/$routeId'
+      path: '/routes/$routeId'
+      fullPath: '/routes/$routeId'
+      preLoaderRoute: typeof RoutesRouteIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stop/$stopId': {
@@ -87,8 +197,13 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
   NearbyRoute: NearbyRoute,
+  ProfileRoute: ProfileRoute,
+  TripsRoute: TripsRoute,
+  RoutesRouteIdRoute: RoutesRouteIdRoute,
   StopStopIdRoute: StopStopIdRoute,
+  RoutesIndexRoute: RoutesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
