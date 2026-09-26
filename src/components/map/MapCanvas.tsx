@@ -2,7 +2,7 @@ import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Locate, Radio } from "lucide-react";
+import { Locate, Maximize2, Navigation, Radio } from "lucide-react";
 import { getMapConfig } from "@/lib/maptiler.functions";
 import { isInsidePune, PUNE_CENTER } from "@/lib/geo";
 import type { MapViewProps } from "./types";
@@ -22,14 +22,23 @@ function calcBearing(from: [number, number], to: [number, number]): number {
   return (toDeg(Math.atan2(y, x)) + 360) % 360;
 }
 
-/** White SVG bus icon (18×18 viewBox, centered inside 36px circle). */
-const BUS_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-  <rect x="3" y="5" width="18" height="12" rx="2"/>
-  <path d="M3 10h18"/>
-  <path d="M8 17v2"/>
-  <path d="M16 17v2"/>
-  <path d="M7 5V3"/>
-  <path d="M17 5V3"/>
+/** PMPML top-view bus icon (purple body, white outline, windshield, headlights, taillights). */
+const BUS_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="36" viewBox="0 0 22 36" fill="none">
+  <!-- Purple body with crisp white 2px outline -->
+  <rect x="1.5" y="1.5" width="19" height="33" rx="4.5" fill="#800080" stroke="#FFFFFF" stroke-width="2"/>
+  <!-- Front windshield (top) -->
+  <path d="M4 6.5C4 5.2 5.2 4.2 7 4.2H15C16.8 4.2 18 5.2 18 6.5V9.5H4V6.5Z" fill="#FFFFFF" fill-opacity="0.95"/>
+  <!-- Headlights -->
+  <circle cx="5" cy="3" r="1" fill="#FEF08A"/>
+  <circle cx="17" cy="3" r="1" fill="#FEF08A"/>
+  <!-- Passenger roof windows -->
+  <rect x="4.5" y="12" width="13" height="4.5" rx="1.5" fill="#FFFFFF" fill-opacity="0.25"/>
+  <rect x="4.5" y="19" width="13" height="4.5" rx="1.5" fill="#FFFFFF" fill-opacity="0.25"/>
+  <!-- Rear window -->
+  <rect x="4.5" y="28" width="13" height="2.5" rx="1" fill="#FFFFFF" fill-opacity="0.75"/>
+  <!-- Taillights -->
+  <rect x="3.5" y="32.5" width="3" height="1" rx="0.5" fill="#EF4444"/>
+  <rect x="15.5" y="32.5" width="3" height="1" rx="0.5" fill="#EF4444"/>
 </svg>`;
 
 /** Format ETA seconds to string like "2m 45s" or "3 min". */
@@ -733,6 +742,57 @@ export default function MapCanvas({
 
   const isUserOutsidePune = Boolean(user && !isInsidePune(user));
 
+  function fitEntireRoute() {
+    if (!map.current) return;
+    setIsFollowingBus(false);
+    const bounds = new maplibregl.LngLatBounds();
+    if (line && line.length > 0) {
+      for (const pt of line) bounds.extend(pt);
+    }
+    if (travelledLine && travelledLine.length > 0) {
+      for (const pt of travelledLine) bounds.extend(pt);
+    }
+    if (user) bounds.extend([user.lon, user.lat]);
+    if (destination) bounds.extend([destination.lon, destination.lat]);
+
+    map.current.fitBounds(bounds, {
+      padding: { top: 70, bottom: 290, left: 40, right: 40 },
+      maxZoom: 15,
+      duration: 1000,
+      easing: easeInOut,
+      essential: true,
+    });
+  }
+
+  function recenterUser() {
+    setIsLocating(true);
+    setTimeout(() => setIsLocating(false), 800);
+    setIsFollowingBus(false);
+    const target = user ?? PUNE_CENTER;
+    map.current?.flyTo({
+      center: [target.lon, target.lat],
+      zoom: 14.5,
+      duration: 800,
+      easing: easeInOut,
+      essential: true,
+    });
+  }
+
+  function toggleFollowBus() {
+    const next = !isFollowingBus;
+    setIsFollowingBus(next);
+    const bus = buses[0] || selectedBus;
+    if (next && bus && map.current) {
+      map.current.flyTo({
+        center: [bus.lon, bus.lat],
+        zoom: 15.5,
+        duration: 900,
+        easing: easeInOut,
+        essential: true,
+      });
+    }
+  }
+
   return (
     <div className={`relative w-full h-full overflow-hidden select-none ${className}`}>
       <div
@@ -741,64 +801,52 @@ export default function MapCanvas({
       />
       {!ready && <div className="absolute inset-0 animate-pulse bg-muted/30" />}
 
-      {/* Floating white glassmorphism GPS button — top-right */}
-      <button
-        type="button"
-        onClick={recenter}
-        aria-label="Recentre map"
-        className="trako-gps-btn absolute top-4 right-4 z-20"
-      >
-        <Locate
-          className={`size-5 text-[#800080] transition-transform duration-500 ${isLocating ? "rotate-180 scale-110" : ""}`}
-        />
-      </button>
-
-      {/* Floating Track Bus button — below GPS button in clear map area */}
-      <button
-        type="button"
-        onClick={() => {
-          let target = selectedBus;
-          if (!target) {
-            target = visibleBuses.find((b) => b.status === "live") ?? visibleBuses[0] ?? null;
-            if (target) {
-              setSelectedBusId(target.id);
-            }
-          }
-          if (target && map.current) {
-            setIsFollowingBus(true);
-            map.current.flyTo({
-              center: [target.lon, target.lat],
-              zoom: 15.2,
-              duration: 900,
-              easing: easeInOut,
-              essential: true,
-            });
-          }
-        }}
-        className={`trako-track-btn absolute top-[58px] right-4 z-20 cursor-pointer ${
-          isFollowingBus || isRideActive ? "trako-track-btn--following" : ""
-        }`}
-      >
-        {/* LIVE or FOLLOWING indicator with ripple */}
-        <span className="trako-track-live-dot">
-          {!isUserOutsidePune && <span className="trako-track-live-ripple" />}
-          <span
-            className={`trako-track-live-core ${
-              isUserOutsidePune ? "!bg-amber-400 !shadow-[0_0_6px_rgba(251,191,36,0.8)]" : ""
-            }`}
+      {/* Floating Camera Controls Stack (Requirement 5: Recenter Me, Follow Bus, View Entire Route) */}
+      <div className="absolute top-4 right-4 z-20 flex flex-col items-end gap-2">
+        {/* Recenter Me */}
+        <button
+          type="button"
+          onClick={recenterUser}
+          aria-label="Recenter Me"
+          title="Recenter on my GPS location"
+          className="trako-gps-btn"
+        >
+          <Locate
+            className={`size-5 text-[#800080] transition-transform duration-500 ${isLocating ? "rotate-180 scale-110" : ""}`}
           />
-        </span>
-        <span className="trako-track-live-label">
-          {isFollowingBus ? "FOLLOWING" : isUserOutsidePune ? "DEMO" : "LIVE"}
-        </span>
-        <Radio className="size-3.5 shrink-0" />
-        {selectedBus ? `Track Bus ${selectedBus.routeNo ?? ""}` : isUserOutsidePune ? "Demo Mode" : "Track Bus"}
-        {selectedBus && (
-          <span className="ml-1 rounded-full bg-black/25 px-1.5 py-0.5 text-[10px] font-mono font-bold text-white">
-            {formatCountdown(etaCountdownSec)}
-          </span>
+        </button>
+
+        {/* Follow Bus (visible during active journey or bus selection) */}
+        {(isRideActive || buses.length > 0) && (
+          <button
+            type="button"
+            onClick={toggleFollowBus}
+            aria-label="Follow Bus"
+            title={isFollowingBus ? "Following Bus" : "Follow Bus"}
+            className={`trako-track-btn cursor-pointer ${isFollowingBus ? "trako-track-btn--following" : ""}`}
+          >
+            <span className="trako-track-live-dot">
+              <span className="trako-track-live-ripple" />
+              <span className="trako-track-live-core" />
+            </span>
+            <Navigation className="size-3.5 shrink-0" />
+            <span>{isFollowingBus ? "Following" : "Follow Bus"}</span>
+          </button>
         )}
-      </button>
+
+        {/* View Entire Route */}
+        {line && line.length > 0 && (
+          <button
+            type="button"
+            onClick={fitEntireRoute}
+            aria-label="View Entire Route"
+            title="View entire route on map"
+            className="trako-gps-btn"
+          >
+            <Maximize2 className="size-4.5 text-[#800080]" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

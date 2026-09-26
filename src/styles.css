@@ -568,23 +568,15 @@
 .trako-bus-shadow {
   position: relative;
   z-index: 1;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #800080;
-  border: 2px solid #FFFFFF;
-  box-shadow:
-    0 0 0 2px rgba(128, 0, 128, 0.20),
-    0 4px 12px rgba(128, 0, 128, 0.45),
-    0 2px 4px rgba(0, 0, 0, 0.18);
+  width: 22px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: transform 0.15s ease;
   will-change: transform;
   transform-origin: center center;
-  /* Icon is centered via flex — SVG is injected by JS */
-  overflow: hidden;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.32));
 }
 
 .trako-bus-shadow svg {
@@ -592,19 +584,24 @@
   flex-shrink: 0;
 }
 
-/* Live bus: full pulse ring visible */
+/* Small green LIVE pulse ring behind the marker */
+.trako-live-pulse {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  top: 50%;
+  left: 50%;
+  margin-top: -13px;
+  margin-left: -13px;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.45);
+  pointer-events: none;
+}
+
+/* Live bus: subtle pulse ring */
 .trako-live-bus--live .trako-live-pulse {
   animation: busPulse 2s ease-out infinite;
   opacity: 1;
-}
-
-/* Live bus: slightly brighter purple */
-.trako-live-bus--live .trako-bus-shadow {
-  background: linear-gradient(135deg, #800080, #9333EA);
-  box-shadow:
-    0 0 0 2px rgba(128, 0, 128, 0.25),
-    0 4px 14px rgba(128, 0, 128, 0.50),
-    0 2px 5px rgba(0, 0, 0, 0.20);
 }
 
 /* Stale bus: dimmed, no pulse ring */

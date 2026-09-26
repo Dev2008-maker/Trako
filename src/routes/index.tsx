@@ -1,28 +1,28 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState, useEffect } from "react";
-import { AlertCircle, Bus } from "lucide-react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { MapView } from "@/components/map/MapView";
 import { NearestStopCard } from "@/components/NearestStopCard";
 import { NearbyStopCard } from "@/components/NearbyStopCard";
 import { OutsidePuneCard } from "@/components/OutsidePuneCard";
 import { JourneyPreviewCard } from "@/components/JourneyPreviewCard";
+import { LiveJourneySheet } from "@/components/LiveJourneySheet";
+import { JourneyCompletedCard } from "@/components/JourneyCompletedCard";
 import { DestinationSearch, type Destination } from "@/components/DestinationSearch";
 import { QuickActions } from "@/components/QuickActions";
-import { LiveStatusBadge } from "@/components/LiveStatusBadge";
 import { useCurrentLocation } from "@/hooks/useCurrentLocation";
-import { useLiveBuses } from "@/hooks/useLiveBuses";
 import {
   nearestStops,
   routeDetailQuery,
   routesBetweenQuery,
-  statusFromPing,
   stopsQuery,
   type Stop,
 } from "@/lib/transit";
-import { formatWalk, isInsidePune, PUNE_CENTER } from "@/lib/geo";
-import { getRouteJourney, findRoutesConnecting, searchGtfsRoutes, type GtfsJourney } from "@/lib/gtfs";
+import { isInsidePune, PUNE_CENTER } from "@/lib/geo";
+import { getRouteJourney, findRoutesConnecting, searchGtfsRoutes, type GtfsJourney, type GtfsStop } from "@/lib/gtfs";
 import { calcBearing } from "@/lib/demoBuses";
 import type { BusMarkerData } from "@/components/map/types";
 
@@ -45,19 +45,31 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
+export type JourneyState = "no_journey" | "selected" | "active" | "completed";
+
 function Home() {
   const { coords, status, request } = useCurrentLocation();
   const { data: stops = [] } = useQuery(stopsQuery);
-  const { pings, demoBuses = [] } = useLiveBuses();
 
+  // 1. JOURNEY STATE MACHINE (Requirement 1)
+  const [journeyState, setJourneyState] = useState<JourneyState>("no_journey");
   const [destination, setDestination] = useState<Destination | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 
+  // Active Journey Data
   const [selectedJourney, setSelectedJourney] = useState<GtfsJourney | null>(null);
   const [currentStopIndex, setCurrentStopIndex] = useState(0);
-  const [isRideActive, setIsRideActive] = useState(false);
+  const [currentShapeIndex, setCurrentShapeIndex] = useState(0);
+  const [isPausedAtStop, setIsPausedAtStop] = useState(false);
+  const [dwellCountdown, setDwellCountdown] = useState(2);
 
+  // Demo Simulation Controls (Requirement 10)
+  const [speedMultiplier, setSpeedMultiplier] = useState(1);
+  const [isSimulationPaused, setIsSimulationPaused] = useState(false);
+  const notifiedStopsRef = useRef<Set<string>>(new Set());
+
+  // Location & service bounds
   const origin = coords ?? null;
   const isOutsidePune = Boolean(coords && !isInsidePune(coords));
   const near = useMemo(() => nearestStops(stops, origin, 5), [stops, origin]);
@@ -74,146 +86,228 @@ function Home() {
   const topMatch = matches[0];
   const { data: routeDetail } = useQuery(routeDetailQuery(topMatch?.route.id));
 
-  // Resolve GTFS journey when destination changes
+  // Resolve GTFS journey when destination is chosen
   useEffect(() => {
     if (!destination) {
       setSelectedJourney(null);
+      setJourneyState("no_journey");
       setCurrentStopIndex(0);
-      setIsRideActive(false);
+      setCurrentShapeIndex(0);
+      setIsPausedAtStop(false);
       return;
     }
+
+    // Move to STATE 2: Journey Selected
+    setJourneyState("selected");
+    setCurrentStopIndex(0);
+    setCurrentShapeIndex(0);
+    setIsPausedAtStop(false);
 
     // 1. If destination explicitly specified routeId
     if (destination.routeId) {
       const j = getRouteJourney(destination.routeId);
       if (j) {
         setSelectedJourney(j);
-        setCurrentStopIndex(0);
-        setIsRideActive(false);
         return;
       }
     }
 
-    // 2. Look for direct connecting key journeys from origin/nearest stop to destination
+    // 2. Direct connecting key journeys (e.g. Pune Station to Shivajinagar, Swargate to COEP)
     const boardingName = nearest?.stop.name ?? (origin ? "Lohegaon" : "Pune Station");
     const connect = findRoutesConnecting(boardingName, destination.name);
     if (connect.length > 0 && connect[0]) {
       setSelectedJourney(connect[0]);
-      setCurrentStopIndex(0);
-      setIsRideActive(false);
       return;
     }
 
-    // 3. Fallback: try connecting with "Pune Station" or destination name
+    // 3. Connect via Pune Station or Shivajinagar
     const fallbackConnect = findRoutesConnecting("Pune Station", destination.name);
     if (fallbackConnect.length > 0 && fallbackConnect[0]) {
       setSelectedJourney(fallbackConnect[0]);
-      setCurrentStopIndex(0);
-      setIsRideActive(false);
       return;
     }
 
-    // 4. Fallback: if topMatch route exists from transit query
+    // 4. Try topMatch route from backend query
     if (topMatch?.route?.route_no) {
       const j = getRouteJourney(topMatch.route.route_no);
       if (j) {
         setSelectedJourney(j);
-        setCurrentStopIndex(0);
-        setIsRideActive(false);
         return;
       }
     }
 
-    // 5. Fallback: search by destination name in GTFS
+    // 5. Try GTFS route search
     const routeSearch = searchGtfsRoutes(destination.name, 1);
     if (routeSearch.length > 0 && routeSearch[0]) {
       const j = getRouteJourney(routeSearch[0].id);
       if (j) {
         setSelectedJourney(j);
-        setCurrentStopIndex(0);
-        setIsRideActive(false);
         return;
       }
     }
   }, [destination, topMatch?.route?.route_no, nearest?.stop.name, origin]);
 
-  // Live stop-by-stop ride progression when ride is started
-  useEffect(() => {
-    if (!isRideActive || !selectedJourney) return;
-    const interval = setInterval(() => {
-      setCurrentStopIndex((prev) => {
-        if (prev < selectedJourney.stops.length - 1) {
-          return prev + 1;
-        }
-        return prev;
-      });
-    }, 3500);
-
-    return () => clearInterval(interval);
-  }, [isRideActive, selectedJourney]);
-
-  // Route shape line
-  const routeLine = useMemo<[number, number][] | undefined>(() => {
-    if (!destination) return undefined;
-    if (selectedJourney && selectedJourney.shape.length > 0) {
-      return selectedJourney.shape;
-    }
-    if (routeDetail?.line && routeDetail.line.length > 0) {
-      return routeDetail.line;
-    }
-    if (topMatch && origin) {
-      const boarding = stops.find((s) => s.id === topMatch.boardingStopId);
-      if (boarding) {
-        return [
-          [boarding.lon, boarding.lat],
-          [destination.lon, destination.lat],
-        ];
-      }
-    }
-    return undefined;
-  }, [destination, selectedJourney, routeDetail, topMatch, origin, stops]);
-
-  // Calculate remaining line (light blue) and completed travelled line (grey)
-  const { travelledLine, remainingLine, currentBusPosition, currentBusHeading } = useMemo(() => {
-    if (!selectedJourney) {
-      return { travelledLine: undefined, remainingLine: routeLine, currentBusPosition: null, currentBusHeading: 0 };
-    }
-
-    const jStops = selectedJourney.stops;
+  // Compute closest shape index for each stop along the route
+  const stopShapeIndices = useMemo(() => {
+    if (!selectedJourney || selectedJourney.shape.length === 0) return [];
     const shape = selectedJourney.shape;
-    const curStop = jStops[currentStopIndex] ?? jStops[0];
-    if (!curStop || shape.length === 0) {
-      return { travelledLine: undefined, remainingLine: shape, currentBusPosition: null, currentBusHeading: 0 };
-    }
+    const indices: number[] = [];
 
-    // Find shape index closest to current stop
-    let closestIdx = 0;
-    let minDist = Infinity;
-    for (let i = 0; i < shape.length; i++) {
-      const pt = shape[i];
-      if (!pt) continue;
-      const d = Math.hypot(pt[0] - curStop.lon, pt[1] - curStop.lat);
-      if (d < minDist) {
-        minDist = d;
-        closestIdx = i;
+    for (let s = 0; s < selectedJourney.stops.length; s++) {
+      const stop = selectedJourney.stops[s];
+      let bestIdx = 0;
+      let bestDist = Infinity;
+      for (let i = 0; i < shape.length; i++) {
+        const pt = shape[i];
+        if (!pt) continue;
+        const d = (pt[0] - stop.lon) ** 2 + (pt[1] - stop.lat) ** 2;
+        if (d < bestDist) {
+          bestDist = d;
+          bestIdx = i;
+        }
       }
+      // Guarantee monotonic ordering along the trajectory
+      if (indices.length > 0 && bestIdx <= indices[indices.length - 1]!) {
+        bestIdx = Math.min(shape.length - 1, indices[indices.length - 1]! + 1);
+      }
+      indices.push(bestIdx);
+    }
+    return indices;
+  }, [selectedJourney]);
+
+  // 3. BUS MOVEMENT USING GTFS SHAPES (Requirement 3: 1s updates, dwell at stops, smooth step)
+  useEffect(() => {
+    if (journeyState !== "active" || !selectedJourney || isSimulationPaused) return;
+
+    const intervalTime = Math.max(200, Math.floor(1000 / speedMultiplier));
+    const shape = selectedJourney.shape;
+    const jStops = selectedJourney.stops;
+
+    const timer = setInterval(() => {
+      // Dwell pause at stop (Requirement 3: pause 2-3s at each stop)
+      if (isPausedAtStop) {
+        setDwellCountdown((prev) => {
+          if (prev <= 1) {
+            setIsPausedAtStop(false);
+            return 2;
+          }
+          return prev - 1;
+        });
+        return;
+      }
+
+      // Bus moving towards next stop along GTFS shape points
+      const nextStopIdx = currentStopIndex + 1;
+      const targetShapeIdx = stopShapeIndices[nextStopIdx] ?? (shape.length - 1);
+
+      setCurrentShapeIndex((prevShapeIdx) => {
+        const nextShapeIdx = prevShapeIdx + 1;
+
+        // Check if reached the next stop's shape point
+        if (nextShapeIdx >= targetShapeIdx || nextShapeIdx >= shape.length - 1) {
+          const reachedStopIdx = nextStopIdx;
+          setCurrentStopIndex(reachedStopIdx);
+
+          // Check if arrived at final destination (STATE 4: Journey Completed)
+          if (reachedStopIdx >= jStops.length - 1) {
+            setJourneyState("completed");
+            toast.success(`You have arrived at ${jStops[jStops.length - 1]?.name}!`, {
+              duration: 5000,
+            });
+            return shape.length - 1;
+          }
+
+          // Dwell pause at intermediate stop
+          setIsPausedAtStop(true);
+          setDwellCountdown(2);
+
+          // Notifications (Requirement 9: 2 stops away)
+          const remaining = jStops.length - 1 - reachedStopIdx;
+          if (remaining === 2 && !notifiedStopsRef.current.has("2_stops_away")) {
+            notifiedStopsRef.current.add("2_stops_away");
+            toast.info("Get ready! Your stop is coming in 2 stops.", { duration: 4000 });
+          }
+
+          return targetShapeIdx;
+        }
+
+        return nextShapeIdx;
+      });
+    }, intervalTime);
+
+    return () => clearInterval(timer);
+  }, [
+    journeyState,
+    selectedJourney,
+    isSimulationPaused,
+    speedMultiplier,
+    isPausedAtStop,
+    currentStopIndex,
+    stopShapeIndices,
+  ]);
+
+  // Handle Start Journey (STATE 2 -> STATE 3)
+  const handleStartJourney = () => {
+    setJourneyState("active");
+    setCurrentStopIndex(0);
+    setCurrentShapeIndex(0);
+    setIsPausedAtStop(true);
+    setDwellCountdown(2);
+    notifiedStopsRef.current.clear();
+
+    // Boarding Reminder (Requirement 9)
+    toast.info("Boarding Reminder: You are at the boarding stop.", { duration: 3500 });
+  };
+
+  // Handle Reset Journey
+  const handleResetJourney = () => {
+    setCurrentStopIndex(0);
+    setCurrentShapeIndex(0);
+    setIsPausedAtStop(true);
+    setDwellCountdown(2);
+    setJourneyState("active");
+    notifiedStopsRef.current.clear();
+    toast.info("Journey reset to beginning.");
+  };
+
+  // Handle Exit Journey (STATE 3 -> STATE 1)
+  const handleExitJourney = () => {
+    setJourneyState("no_journey");
+    setDestination(null);
+    setSelectedJourney(null);
+    setCurrentStopIndex(0);
+    setCurrentShapeIndex(0);
+    setIsPausedAtStop(false);
+  };
+
+  // 4. GOOGLE MAPS BLUE ROUTE PROGRESS (Requirement 4)
+  // Remaining line: #4EA8FF (shrinks as bus travels)
+  // Travelled line: #94A3B8 (lengthens as bus travels)
+  const { travelledLine, remainingLine, currentBusPosition, currentBusHeading } = useMemo(() => {
+    if (!selectedJourney || selectedJourney.shape.length === 0) {
+      return { travelledLine: undefined, remainingLine: undefined, currentBusPosition: null, currentBusHeading: 0 };
     }
 
-    const travelled = isRideActive && closestIdx > 0 ? shape.slice(0, closestIdx + 1) : undefined;
-    const remaining = isRideActive ? shape.slice(closestIdx) : shape;
+    const shape = selectedJourney.shape;
+    const curShapeIdx = Math.min(currentShapeIndex, shape.length - 1);
+    const busPt = shape[curShapeIdx] ?? shape[0];
 
-    const nextPt = shape[Math.min(closestIdx + 1, shape.length - 1)] ?? [curStop.lon, curStop.lat];
-    const heading = calcBearing([curStop.lon, curStop.lat], nextPt);
+    const nextPt = shape[Math.min(curShapeIdx + 1, shape.length - 1)] ?? busPt;
+    const heading = calcBearing(busPt, nextPt);
+
+    const isTracking = journeyState === "active" || journeyState === "completed";
+    const travelled = isTracking && curShapeIdx > 0 ? shape.slice(0, curShapeIdx + 1) : undefined;
+    const remaining = isTracking ? shape.slice(curShapeIdx) : shape;
 
     return {
       travelledLine: travelled,
       remainingLine: remaining.length > 0 ? remaining : shape,
-      currentBusPosition: { lat: curStop.lat, lon: curStop.lon },
+      currentBusPosition: { lat: busPt[1], lon: busPt[0] },
       currentBusHeading: heading,
     };
-  }, [selectedJourney, currentStopIndex, routeLine, isRideActive]);
+  }, [selectedJourney, currentShapeIndex, journeyState]);
 
-  // Walking path from Pickup Point to boarding stop
+  // Walking line from user location to boarding stop
   const walkingLine = useMemo<[number, number][] | undefined>(() => {
     if (!destination || !origin) return undefined;
     const boardingTarget = selectedJourney?.originStop ?? (topMatch ? stops.find((s) => s.id === topMatch.boardingStopId) : null);
@@ -224,11 +318,14 @@ function Home() {
     ];
   }, [destination, selectedJourney, topMatch, origin, stops]);
 
-  // CRITICAL RULE: "No live buses visible yet." (Starts ONLY when Start Journey is pressed!)
+  // 2. BUS TRACKING (Requirement 2: Show ONLY the selected bus during active journey)
   const activeBusMarkers = useMemo<BusMarkerData[]>(() => {
-    if (!isRideActive || !selectedJourney || !currentBusPosition) {
+    // There should NEVER be multiple buses moving. No moving buses in STATE 1, 2, 4.
+    if (journeyState !== "active" || !selectedJourney || !currentBusPosition) {
       return [];
     }
+
+    const remainingStops = Math.max(1, selectedJourney.stops.length - 1 - currentStopIndex);
 
     return [
       {
@@ -239,20 +336,14 @@ function Home() {
         status: "live",
         routeNo: selectedJourney.routeShortName,
         routeName: selectedJourney.routeLongName,
-        etaMinutes: Math.max(1, (selectedJourney.stops.length - 1 - currentStopIndex) * 2),
+        etaMinutes: remainingStops * 2,
         heading: currentBusHeading,
         isDemo: true,
       },
     ];
-  }, [isRideActive, selectedJourney, currentBusPosition, currentBusHeading, currentStopIndex]);
+  }, [journeyState, selectedJourney, currentBusPosition, currentBusHeading, currentStopIndex]);
 
-  const mapStops = useMemo(() => {
-    const list = near.map((n) => n.stop);
-    const dest = destination?.stopId ? stops.find((s) => s.id === destination.stopId) : undefined;
-    return dest && !list.some((s) => s.id === dest.id) ? [...list, dest] : list;
-  }, [near, destination?.stopId, stops]);
-
-  // When a journey is selected, show ONLY stops belonging to that trip
+  // Map Stops: In journey mode, show only stops of the selected trip
   const activeMapStops = useMemo<Stop[]>(() => {
     if (selectedJourney) {
       return selectedJourney.stops.map((s) => ({
@@ -264,78 +355,66 @@ function Home() {
         area: null,
       }));
     }
-    return mapStops;
-  }, [selectedJourney, mapStops]);
+    const list = near.map((n) => n.stop);
+    const dest = destination?.stopId ? stops.find((s) => s.id === destination.stopId) : undefined;
+    return dest && !list.some((s) => s.id === dest.id) ? [...list, dest] : list;
+  }, [selectedJourney, near, destination?.stopId, stops]);
 
-  // Computed Journey Preview details
-  const originStopName = useMemo(() => {
-    if (selectedJourney) return selectedJourney.originStop.name;
-    if (topMatch) {
-      const boarding = stops.find((s) => s.id === topMatch.boardingStopId);
-      if (boarding) return boarding.name;
-    }
-    return nearest?.stop.name ?? (origin ? "Nearest Boarding Stop" : "Pune Station");
-  }, [selectedJourney, topMatch, stops, nearest, origin]);
+  // Computed details for preview & live cards
+  const originStopName = selectedJourney?.originStop.name ?? nearest?.stop.name ?? (origin ? "Lohegaon" : "Pune Station");
+  const destinationStopName = selectedJourney?.destinationStop.name ?? destination?.name ?? "Destination";
+  const busNumber = selectedJourney?.routeShortName ?? topMatch?.route?.route_no ?? destination?.routeShortName ?? "24A";
+  const routeLongName = selectedJourney?.routeLongName ?? topMatch?.route?.name ?? `${originStopName} ➔ ${destinationStopName}`;
+  const totalStopsCount = selectedJourney?.stops.length ?? 16;
+  const remainingStopsCount = Math.max(0, totalStopsCount - 1 - currentStopIndex);
 
-  const destinationStopName = useMemo(() => {
-    if (selectedJourney) return selectedJourney.destinationStop.name;
-    return destination?.name ?? "Destination";
-  }, [selectedJourney, destination]);
+  const walkMeters = nearest?.meters ?? 320;
+  const walkMinutes = Math.max(1, Math.round(walkMeters / 80));
+  const fareAmount = totalStopsCount <= 8 ? 10 : totalStopsCount <= 18 ? 15 : totalStopsCount <= 30 ? 20 : 25;
 
-  const busNumber = useMemo(() => {
-    return selectedJourney?.routeShortName ?? topMatch?.route?.route_no ?? destination?.routeShortName ?? "24A";
-  }, [selectedJourney, topMatch, destination]);
+  const currentStop: GtfsStop = selectedJourney?.stops[currentStopIndex] ?? selectedJourney?.originStop ?? {
+    stopId: "stop_0",
+    name: originStopName,
+    lat: 18.5204,
+    lon: 73.8567,
+    sequence: 1,
+    scheduledArrival: "08:00 AM",
+    scheduledDeparture: "08:00 AM",
+  };
 
-  const routeLongName = useMemo(() => {
-    return selectedJourney?.routeLongName ?? topMatch?.route?.name ?? `${originStopName} ➔ ${destinationStopName}`;
-  }, [selectedJourney, topMatch, originStopName, destinationStopName]);
+  const nextStop: GtfsStop | undefined = selectedJourney?.stops[currentStopIndex + 1];
 
-  const stopsCount = useMemo(() => {
-    return selectedJourney?.stops.length ?? 16;
-  }, [selectedJourney]);
-
-  const walkMeters = useMemo(() => {
-    if (nearest?.meters) return nearest.meters;
-    return 320;
-  }, [nearest]);
-
-  const walkMinutes = useMemo(() => {
-    return Math.max(1, Math.round(walkMeters / 80));
-  }, [walkMeters]);
-
-  const fareAmount = useMemo(() => {
-    if (stopsCount <= 8) return 10;
-    if (stopsCount <= 18) return 15;
-    if (stopsCount <= 30) return 20;
-    return 25;
-  }, [stopsCount]);
-
-  const journeyDurationMinutes = useMemo(() => {
-    return Math.max(12, Math.round(stopsCount * 2.1));
-  }, [stopsCount]);
-
+  // ETA Engine (Requirement 8)
   const etaMinutes = useMemo(() => {
-    if (isRideActive) {
-      return Math.max(1, (stopsCount - 1 - currentStopIndex) * 2);
+    if (journeyState === "active") {
+      return Math.max(1, remainingStopsCount * 2);
     }
     return Math.min(12, Math.max(3, walkMinutes + 2));
-  }, [isRideActive, stopsCount, currentStopIndex, walkMinutes]);
+  }, [journeyState, remainingStopsCount, walkMinutes]);
 
-  // Center camera logic
+  const remainingKm = useMemo(() => {
+    return (remainingStopsCount * 0.8);
+  }, [remainingStopsCount]);
+
+  const totalDistanceKm = useMemo(() => {
+    return totalStopsCount * 0.8;
+  }, [totalStopsCount]);
+
+  // Camera center: During active ride follow bus, else center on user or destination
   const center = useMemo(() => {
-    if (currentBusPosition && isRideActive) {
+    if (currentBusPosition && journeyState === "active") {
       return currentBusPosition;
     }
     if (destination) {
       return { lat: destination.lat, lon: destination.lon };
     }
     return origin ?? PUNE_CENTER;
-  }, [currentBusPosition, isRideActive, destination, origin]);
+  }, [currentBusPosition, journeyState, destination, origin]);
 
   return (
     <AppShell bare>
       <div className="relative min-h-[calc(100vh-53px)] overflow-x-hidden">
-        {/* Fixed Map behind UI (full viewport height, never truncated) */}
+        {/* Fixed Map behind UI (full viewport height) */}
         <div className="fixed inset-0 top-[53px] z-0 h-[calc(100vh-53px)] w-full pointer-events-auto">
           <MapView
             className="size-full"
@@ -348,12 +427,12 @@ function Home() {
                 : (selectedStopId ?? nearest?.stop.id ?? null)
             }
             currentStopId={
-              isRideActive && selectedJourney
+              journeyState === "active" && selectedJourney
                 ? (selectedJourney.stops[currentStopIndex]?.stopId ?? null)
                 : null
             }
             completedStopIds={
-              isRideActive && selectedJourney
+              journeyState === "active" && selectedJourney
                 ? selectedJourney.stops.slice(0, currentStopIndex).map((s) => s.stopId)
                 : undefined
             }
@@ -363,10 +442,10 @@ function Home() {
             travelledLine={travelledLine}
             walkingLine={selectedJourney ? undefined : walkingLine}
             onStopClick={setSelectedStopId}
-            isRideActive={isRideActive}
+            isRideActive={journeyState === "active"}
           />
 
-          {/* Smooth vertical gradient overlay after visible cards (290px transition):
+          {/* Smooth vertical gradient overlay (290px transition):
               Top: fully transparent
               Middle: rgba(255, 255, 255, 0.35)
               Bottom: solid white (#FFFFFF)
@@ -385,10 +464,51 @@ function Home() {
           {/* Transparent viewport spacer so the map remains unobstructed and directly interactive */}
           <div className="h-[46vh] min-h-[260px] w-full" />
 
-          {/* Floating Sheet containing the cards */}
+          {/* Floating Sheet containing the state cards */}
           <div className="trako-sheet pointer-events-auto relative mx-auto max-w-md space-y-3 px-4 pt-4 pb-24 shadow-2xl">
-            {destination ? (
-              // Journey Preview / Active Ride Card
+            {/* STATE 4 — Journey Completed (Requirement 11) */}
+            {journeyState === "completed" && selectedJourney && (
+              <JourneyCompletedCard
+                journey={selectedJourney}
+                durationMinutes={Math.max(15, totalStopsCount * 2)}
+                distanceKm={totalDistanceKm}
+                totalStops={totalStopsCount}
+                fareAmount={fareAmount}
+                onRepeatJourney={() => {
+                  handleResetJourney();
+                  handleStartJourney();
+                }}
+                onGoHome={handleExitJourney}
+              />
+            )}
+
+            {/* STATE 3 — Journey Started / Live Ride (Requirement 7) */}
+            {journeyState === "active" && selectedJourney && (
+              <LiveJourneySheet
+                journey={selectedJourney}
+                currentStopIndex={currentStopIndex}
+                currentStop={currentStop}
+                nextStop={nextStop}
+                isPausedAtStop={isPausedAtStop}
+                dwellCountdown={dwellCountdown}
+                remainingKm={remainingKm}
+                etaMinutes={etaMinutes}
+                speedMultiplier={speedMultiplier}
+                onSetSpeed={setSpeedMultiplier}
+                isSimulationPaused={isSimulationPaused}
+                onTogglePauseSimulation={() => setIsSimulationPaused((p) => !p)}
+                onResetJourney={handleResetJourney}
+                onExitJourney={handleExitJourney}
+                onTrackBus={() => {
+                  toast.info("Following live bus camera.");
+                }}
+                isFollowingBus={true}
+                isDemoMode={isOutsidePune || true}
+              />
+            )}
+
+            {/* STATE 2 — Journey Selected (Requirement 1) */}
+            {journeyState === "selected" && destination && (
               <JourneyPreviewCard
                 destination={destination}
                 journey={selectedJourney}
@@ -399,25 +519,19 @@ function Home() {
                 etaMinutes={etaMinutes}
                 walkMeters={walkMeters}
                 walkMinutes={walkMinutes}
-                stopsCount={stopsCount}
-                journeyDurationMinutes={journeyDurationMinutes}
+                stopsCount={totalStopsCount}
+                journeyDurationMinutes={Math.max(12, totalStopsCount * 2)}
                 fareAmount={fareAmount}
                 currentStopIndex={currentStopIndex}
-                isRideActive={isRideActive}
-                onStartRide={() => setIsRideActive(true)}
-                onEndRide={() => {
-                  setIsRideActive(false);
-                  setCurrentStopIndex(0);
-                }}
-                onClear={() => {
-                  setDestination(null);
-                  setSelectedJourney(null);
-                  setIsRideActive(false);
-                  setCurrentStopIndex(0);
-                }}
+                isRideActive={false}
+                onStartRide={handleStartJourney}
+                onEndRide={handleExitJourney}
+                onClear={handleExitJourney}
               />
-            ) : (
-              // Default state: Location alerts, Nearest Stop Card, Destination Search, Quick Actions
+            )}
+
+            {/* STATE 1 — No Journey (Requirement 1: Default view) */}
+            {journeyState === "no_journey" && (
               <>
                 {status === "denied" && (
                   <div className="flex gap-2 rounded-xl bg-tint-strong p-3 text-sm">
@@ -439,7 +553,7 @@ function Home() {
                   <button
                     type="button"
                     onClick={request}
-                    className="w-full rounded-xl bg-tint-strong p-3 text-sm font-semibold text-primary"
+                    className="w-full rounded-xl bg-tint-strong p-3 text-sm font-semibold text-primary cursor-pointer"
                   >
                     Location unavailable — tap to try again
                   </button>
@@ -477,7 +591,7 @@ function Home() {
                     setDestination(dest);
                     setExpanded(false);
                   }}
-                  onClear={() => setDestination(null)}
+                  onClear={handleExitJourney}
                 />
 
                 <QuickActions />
