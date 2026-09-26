@@ -30,4 +30,5 @@ export type MapViewProps = {
   currentStopId?: string | null | undefined;
   completedStopIds?: string[] | undefined;
   isRideActive?: boolean | undefined;
+  routeColor?: string | undefined;
 };

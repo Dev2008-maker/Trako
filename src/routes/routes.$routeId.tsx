@@ -1,24 +1,51 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { AppShell } from "@/components/AppShell";
+import { RouteDetailsSheet } from "@/components/routes/RouteDetailsSheet";
+import { getAllExplorerRoutes } from "@/lib/gtfs";
 
 export const Route = createFileRoute("/routes/$routeId")({
-  head: () => ({
+  head: ({ params }) => ({
     meta: [
-      { title: "Route details — Trako" },
-      { name: "description", content: "Stops and schedule for this PMPML bus route." },
-      { property: "og:title", content: "Route details — Trako" },
-      { property: "og:description", content: "Stops and schedule for this PMPML bus route." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+      { title: `Bus ${params.routeId} Details — Trako Pune` },
+      { name: "description", content: `Stops, timings, and schedule for PMPML Bus ${params.routeId}.` },
+      { property: "og:title", content: `Bus ${params.routeId} — Trako Pune` },
+      { property: "og:description", content: `Full stop sequence and timings for PMPML Bus ${params.routeId}.` },
     ],
   }),
-  component: Page,
+  component: RouteDetailsPage,
 });
 
-function Page() {
+function RouteDetailsPage() {
+  const { routeId } = Route.useParams();
+  const navigate = useNavigate();
+  const allRoutes = useMemo(() => getAllExplorerRoutes(), []);
+  const route = useMemo(() => {
+    return allRoutes.find(
+      (r) => r.id === routeId || r.shortName.toLowerCase() === routeId.toLowerCase()
+    );
+  }, [allRoutes, routeId]);
+
+  if (!route) {
+    return (
+      <AppShell title="Route not found">
+        <div className="trako-card p-6 text-center space-y-3">
+          <p className="text-sm text-muted-foreground">PMPML Route "{routeId}" was not found.</p>
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/routes" })}
+            className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground cursor-pointer"
+          >
+            Browse all routes
+          </button>
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
-    <AppShell title="Route details">
-      <div className="trako-card p-5 text-sm text-muted-foreground">Coming soon.</div>
+    <AppShell title={`Bus ${route.shortName}`}>
+      <RouteDetailsSheet route={route} onClose={() => navigate({ to: "/routes" })} />
     </AppShell>
   );
 }

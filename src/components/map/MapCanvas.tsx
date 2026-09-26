@@ -103,6 +103,7 @@ export default function MapCanvas({
   currentStopId,
   completedStopIds,
   isRideActive = false,
+  routeColor,
   destination,
   buses = [],
   line,
@@ -588,6 +589,9 @@ export default function MapCanvas({
       }
 
       (source as maplibregl.GeoJSONSource).setData(data);
+      if (instance.getLayer("trako-route-line")) {
+        instance.setPaintProperty("trako-route-line", "line-color", routeColor || "#4EA8FF");
+      }
       return;
     }
 
@@ -602,17 +606,17 @@ export default function MapCanvas({
       paint: { "line-color": "#FFFFFF", "line-width": 11.5, "line-opacity": 1.0 },
     });
 
-    // Google Maps style light-blue route (#4EA8FF)
+    // Route line: custom routeColor (e.g. purple #7C3AED for Route Details) or default Google Maps light-blue (#4EA8FF)
     instance.addLayer({
       id: "trako-route-line",
       type: "line",
       source: "trako-route",
       layout: { "line-cap": "round", "line-join": "round" },
-      paint: { "line-color": "#4EA8FF", "line-width": 7.5, "line-opacity": 1.0 },
+      paint: { "line-color": routeColor || "#4EA8FF", "line-width": 7.5, "line-opacity": 1.0 },
     });
 
     prevRideActive.current = isRideActive;
-  }, [ready, line, travelledLine, isRideActive]);
+  }, [ready, line, travelledLine, isRideActive, routeColor]);
 
   // Walking path polyline (dashed line from Pickup Point to nearest boarding stop)
   useEffect(() => {

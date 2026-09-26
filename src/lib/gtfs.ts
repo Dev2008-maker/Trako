@@ -1,5 +1,6 @@
 import gtfsRoutesData from "@/data/gtfsRoutes.json";
 import gtfsKeyJourneysData from "@/data/gtfsKeyJourneys.json";
+import gtfsExplorerRoutesData from "@/data/gtfsExplorerRoutes.json";
 
 export type GtfsRoute = {
   id: string;
@@ -7,6 +8,34 @@ export type GtfsRoute = {
   longName: string;
   origin: string;
   destination: string;
+};
+
+export type GtfsExplorerRoute = {
+  id: string;
+  shortName: string;
+  longName: string;
+  origin: string;
+  destination: string;
+  stopsCount: number;
+  operatingStatus: string;
+  firstBus: string;
+  lastBus: string;
+  frequency: string;
+  totalTrips: number;
+  stopNames: string[];
+};
+
+export type GtfsRouteDetail = {
+  routeId: string;
+  shortName: string;
+  longName: string;
+  origin: string;
+  destination: string;
+  firstBus: string;
+  lastBus: string;
+  frequency: string;
+  stops: GtfsStop[];
+  shape: [number, number][];
 };
 
 export type GtfsStop = {
@@ -180,3 +209,64 @@ export function getRouteJourney(routeId: string, directionId = 0): GtfsJourney |
     ],
   };
 }
+
+/**
+ * Returns all 309 official PMPML routes with complete schedule stats.
+ */
+export function getAllExplorerRoutes(): GtfsExplorerRoute[] {
+  return gtfsExplorerRoutesData as GtfsExplorerRoute[];
+}
+
+/**
+ * Lazily loads full stop list and shape coordinates for a route.
+ */
+export async function getRouteDetailsAsync(routeId: string): Promise<GtfsRouteDetail | null> {
+  try {
+    const mod = await import("@/data/gtfsRouteDetails.json");
+    const details = mod.default as Record<string, GtfsRouteDetail>;
+    return details[routeId] ?? null;
+  } catch (err) {
+    console.error("Failed to load route details lazily:", err);
+    return null;
+  }
+}
+
+/**
+ * Searches routes by:
+ * - Bus Number (e.g. "24A", "103")
+ * - Short Name
+ * - Long Name (e.g. "Katraj", "Lohgaon")
+ * - Stop Name
+ */
+export function searchExplorerRoutes(
+  query: string,
+  routesList: GtfsExplorerRoute[] = gtfsExplorerRoutesData as GtfsExplorerRoute[]
+): GtfsExplorerRoute[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return routesList;
+
+  const exactShort: GtfsExplorerRoute[] = [];
+  const startsWithShort: GtfsExplorerRoute[] = [];
+  const nameMatches: GtfsExplorerRoute[] = [];
+  const stopMatches: GtfsExplorerRoute[] = [];
+
+  for (const r of routesList) {
+    const sName = r.shortName.toLowerCase();
+    const lName = r.longName.toLowerCase();
+    const orig = r.origin.toLowerCase();
+    const dest = r.destination.toLowerCase();
+
+    if (sName === q) {
+      exactShort.push(r);
+    } else if (sName.startsWith(q)) {
+      startsWithShort.push(r);
+    } else if (lName.includes(q) || orig.includes(q) || dest.includes(q)) {
+      nameMatches.push(r);
+    } else if (r.stopNames && r.stopNames.some((s) => s.toLowerCase().includes(q))) {
+      stopMatches.push(r);
+    }
+  }
+
+  return [...exactShort, ...startsWithShort, ...nameMatches, ...stopMatches];
+}
+
