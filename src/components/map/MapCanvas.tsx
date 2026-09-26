@@ -3,7 +3,6 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Locate, Radio } from "lucide-react";
-import { Link } from "@tanstack/react-router";
 import { getMapConfig } from "@/lib/maptiler.functions";
 import { isInsidePune, PUNE_CENTER } from "@/lib/geo";
 import type { MapViewProps } from "./types";
@@ -33,10 +32,25 @@ const BUS_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" 
   <path d="M17 5V3"/>
 </svg>`;
 
+/** Format ETA seconds to string like "2m 45s" or "3 min". */
+function formatCountdown(sec: number): string {
+  if (sec <= 60) return `${sec}s`;
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return s > 0 ? `${m}m ${s}s` : `${m} min`;
+}
+
 /** Build the DOM element for a live bus marker. */
-function createBusElement(bus: BusMarkerData): HTMLDivElement {
+function createBusElement(
+  bus: BusMarkerData,
+  onSelect: (id: string) => void,
+  isSelected: boolean,
+  countdownText?: string,
+): HTMLDivElement {
   const wrapper = document.createElement("div");
-  wrapper.className = `trako-live-bus ${bus.status === "live" ? "trako-live-bus--live" : "trako-live-bus--stale"}`;
+  wrapper.className = `trako-live-bus ${
+    bus.status === "live" ? "trako-live-bus--live" : "trako-live-bus--stale"
+  } ${isSelected ? "trako-live-bus--selected" : ""}`;
   wrapper.dataset["busId"] = bus.id;
   if (bus.isDemo) wrapper.dataset["demo"] = "true";
 
@@ -44,10 +58,27 @@ function createBusElement(bus: BusMarkerData): HTMLDivElement {
   const pulse = document.createElement("div");
   pulse.className = "trako-live-pulse";
 
-  // Main circular marker
+  // Main circular marker (28px purple with white border and white bus icon)
   const marker = document.createElement("div");
   marker.className = "trako-bus-shadow";
   marker.innerHTML = BUS_SVG;
+
+  // Selected Callout Badge with ETA countdown
+  if (isSelected) {
+    const callout = document.createElement("div");
+    callout.className = "trako-bus-callout";
+    callout.innerHTML = `
+      <span>BUS ${bus.routeNo ?? "58"}</span>
+      <span class="trako-bus-callout-dot">•</span>
+      <span class="trako-bus-callout-eta">${countdownText ?? `${bus.etaMinutes ?? 3} min`} ETA</span>
+    `;
+    wrapper.appendChild(callout);
+  }
+
+  wrapper.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onSelect(bus.id);
+  });
 
   wrapper.appendChild(pulse);
   wrapper.appendChild(marker);
@@ -86,6 +117,56 @@ export default function MapCanvas({
   const destMarker = useRef<maplibregl.Marker | null>(null);
   const clickHandler = useRef(onStopClick);
   clickHandler.current = onStopClick;
+
+  const [selectedBusId, setSelectedBusId] = useState<string | null>(null);
+  const [isFollowingBus, setIsFollowingBus] = useState(false);
+  const [etaCountdownSec, setEtaCountdownSec] = useState(180);
+
+  const selectedBus = useMemo(() => {
+    if (!selectedBusId) return null;
+    return buses.find((b) => b.id === selectedBusId) ?? null;
+  }, [buses, selectedBusId]);
+
+  // Sync ETA seconds when selected bus changes
+  useEffect(() => {
+    if (selectedBus) {
+      setEtaCountdownSec((selectedBus.etaMinutes ?? 3) * 60);
+    }
+  }, [selectedBus?.id, selectedBus?.etaMinutes]);
+
+  // Live ETA countdown timer
+  useEffect(() => {
+    if (!selectedBus) return;
+    const interval = setInterval(() => {
+      setEtaCountdownSec((prev) => (prev > 1 ? prev - 1 : (selectedBus.etaMinutes ?? 3) * 60));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [selectedBus]);
+
+  const handleBusSelect = (busId: string) => {
+    setSelectedBusId(busId);
+    setIsFollowingBus(true);
+    const bus = buses.find((b) => b.id === busId);
+    if (bus && map.current) {
+      map.current.flyTo({
+        center: [bus.lon, bus.lat],
+        zoom: 15.2,
+        duration: 900,
+        easing: easeInOut,
+        essential: true,
+      });
+    }
+  };
+
+  // Follow selected bus camera animation as it moves
+  useEffect(() => {
+    if (!isFollowingBus || !selectedBus || !map.current) return;
+    map.current.easeTo({
+      center: [selectedBus.lon, selectedBus.lat],
+      duration: 1800,
+      easing: easeInOut,
+    });
+  }, [isFollowingBus, selectedBus?.lat, selectedBus?.lon]);
 
   const { data: config, isError } = useQuery({
     queryKey: ["map-config"],
@@ -176,6 +257,10 @@ export default function MapCanvas({
       } catch {
         // Fallback silently — map still renders
       }
+    });
+
+    instance.on("dragstart", () => {
+      setIsFollowingBus(false);
     });
 
     map.current = instance;
@@ -297,7 +382,7 @@ export default function MapCanvas({
     }
   }, [ready, visibleStops, selectedStopId]);
 
-  // ── Premium live bus markers (Phase 2.4A) ──────────────────────────────
+  // ── Premium live bus markers (Phase 2.4A + 2.4.2) ──────────────────────────────
   useEffect(() => {
     if (!ready || !map.current) return;
     const seen = new Set<string>();
@@ -305,22 +390,52 @@ export default function MapCanvas({
     for (const bus of visibleBuses) {
       seen.add(bus.id);
       let state = busAnimStates.current.get(bus.id);
+      const isSelected = selectedBusId === bus.id;
 
       if (!state) {
         // First render — place marker immediately at current position
-        const el = createBusElement(bus);
-        const mapMarker = new maplibregl.Marker({ element: el, anchor: "center", rotation: 0, rotationAlignment: "map" })
+        const el = createBusElement(
+          bus,
+          handleBusSelect,
+          isSelected,
+          formatCountdown(etaCountdownSec),
+        );
+        const mapMarker = new maplibregl.Marker({
+          element: el,
+          anchor: "center",
+          rotation: 0,
+          rotationAlignment: "map",
+        })
           .setLngLat([bus.lon, bus.lat])
           .addTo(map.current!);
-        state = { marker: mapMarker, heading: 0 };
+        state = { marker: mapMarker, heading: bus.heading ?? 0 };
         busAnimStates.current.set(bus.id, state);
       } else {
-        // Update live/stale class without recreating DOM
+        // Update live/stale & selected class without recreating DOM
         const el = state.marker.getElement();
         const inner = el.querySelector(".trako-bus-shadow") as HTMLElement | null;
-        el.className = `trako-live-bus ${bus.status === "live" ? "trako-live-bus--live" : "trako-live-bus--stale"}`;
+        el.className = `trako-live-bus ${
+          bus.status === "live" ? "trako-live-bus--live" : "trako-live-bus--stale"
+        } ${isSelected ? "trako-live-bus--selected" : ""}`;
         if (bus.isDemo) el.dataset["demo"] = "true";
         if (inner) inner.innerHTML = BUS_SVG;
+
+        // Update selected callout badge
+        let callout = el.querySelector(".trako-bus-callout");
+        if (isSelected) {
+          if (!callout) {
+            callout = document.createElement("div");
+            callout.className = "trako-bus-callout";
+            el.appendChild(callout);
+          }
+          callout.innerHTML = `
+            <span>BUS ${bus.routeNo ?? "58"}</span>
+            <span class="trako-bus-callout-dot">•</span>
+            <span class="trako-bus-callout-eta">${formatCountdown(etaCountdownSec)} ETA</span>
+          `;
+        } else if (callout) {
+          callout.remove();
+        }
       }
 
       // Smooth animated movement + rotation
@@ -328,10 +443,10 @@ export default function MapCanvas({
       const moved = Math.abs(curLng - bus.lon) > 1e-6 || Math.abs(curLat - bus.lat) > 1e-6;
       if (moved) {
         // Compute new heading; only update if movement is meaningful
-        const newHeading = calcBearing([curLng, curLat], [bus.lon, bus.lat]);
+        const newHeading = bus.heading ?? calcBearing([curLng, curLat], [bus.lon, bus.lat]);
         // Cancel any pending frame for this bus
         if (state.animFrame) cancelAnimationFrame(state.animFrame);
-        animateBus(state, [curLng, curLat], [bus.lon, bus.lat], newHeading);
+        animateBus(state, [curLng, curLat], [bus.lon, bus.lat], newHeading, 2400);
       }
     }
 
@@ -343,7 +458,7 @@ export default function MapCanvas({
         busAnimStates.current.delete(id);
       }
     }
-  }, [ready, visibleBuses]);
+  }, [ready, visibleBuses, selectedBusId, etaCountdownSec]);
 
   // Destination marker
   useEffect(() => {
@@ -520,19 +635,51 @@ export default function MapCanvas({
       </button>
 
       {/* Floating purple Track Bus FAB capsule — bottom-right */}
-      <Link
-        to="/trips"
-        className="trako-track-btn absolute bottom-8 right-4 z-20"
+      <button
+        type="button"
+        onClick={() => {
+          let target = selectedBus;
+          if (!target) {
+            target = visibleBuses.find((b) => b.status === "live") ?? visibleBuses[0] ?? null;
+            if (target) {
+              setSelectedBusId(target.id);
+            }
+          }
+          if (target && map.current) {
+            setIsFollowingBus(true);
+            map.current.flyTo({
+              center: [target.lon, target.lat],
+              zoom: 15.2,
+              duration: 900,
+              easing: easeInOut,
+              essential: true,
+            });
+          }
+        }}
+        className={`trako-track-btn absolute bottom-8 right-4 z-20 cursor-pointer ${
+          isFollowingBus ? "trako-track-btn--following" : ""
+        }`}
       >
-        {/* LIVE or DEMO indicator with ripple */}
+        {/* LIVE or FOLLOWING indicator with ripple */}
         <span className="trako-track-live-dot">
           {!isUserOutsidePune && <span className="trako-track-live-ripple" />}
-          <span className={`trako-track-live-core ${isUserOutsidePune ? "!bg-amber-400 !shadow-[0_0_6px_rgba(251,191,36,0.8)]" : ""}`} />
+          <span
+            className={`trako-track-live-core ${
+              isUserOutsidePune ? "!bg-amber-400 !shadow-[0_0_6px_rgba(251,191,36,0.8)]" : ""
+            }`}
+          />
         </span>
-        <span className="trako-track-live-label">{isUserOutsidePune ? "DEMO" : "LIVE"}</span>
+        <span className="trako-track-live-label">
+          {isFollowingBus ? "FOLLOWING" : isUserOutsidePune ? "DEMO" : "LIVE"}
+        </span>
         <Radio className="size-3.5 shrink-0" />
-        {isUserOutsidePune ? "Demo Mode" : "Track Bus"}
-      </Link>
+        {selectedBus ? `Track Bus ${selectedBus.routeNo ?? ""}` : isUserOutsidePune ? "Demo Mode" : "Track Bus"}
+        {selectedBus && (
+          <span className="ml-1 rounded-full bg-black/25 px-1.5 py-0.5 text-[10px] font-mono font-bold text-white">
+            {formatCountdown(etaCountdownSec)}
+          </span>
+        )}
+      </button>
     </div>
   );
 }
@@ -547,7 +694,7 @@ function animateBus(
   from: [number, number],
   to: [number, number],
   targetHeading: number,
-  duration = 1000,
+  duration = 2400,
 ) {
   const startedAt = performance.now();
   const startHeading = state.heading;

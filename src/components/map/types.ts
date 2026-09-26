@@ -7,7 +7,11 @@ export type BusMarkerData = {
   lon: number;
   label: string;
   status: "live" | "last_seen";
-  isDemo?: boolean;
+  isDemo?: boolean | undefined;
+  routeNo?: string | undefined;
+  routeName?: string | undefined;
+  etaMinutes?: number | undefined;
+  heading?: number | undefined;
 };
 
 export type MapViewProps = {

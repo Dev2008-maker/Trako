@@ -46,7 +46,7 @@ export const Route = createFileRoute("/")({
 function Home() {
   const { coords, status, request } = useCurrentLocation();
   const { data: stops = [] } = useQuery(stopsQuery);
-  const { pings } = useLiveBuses();
+  const { pings, demoBuses = [] } = useLiveBuses();
 
   const [destination, setDestination] = useState<Destination | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
@@ -111,8 +111,13 @@ function Home() {
         isDemo: ping.is_demo,
       });
     }
+    for (const demo of demoBuses) {
+      if (!out.some((b) => b.id === demo.id)) {
+        out.push(demo);
+      }
+    }
     return out;
-  }, [pings]);
+  }, [pings, demoBuses]);
 
   const mapStops = useMemo(() => {
     const list = near.map((n) => n.stop);
