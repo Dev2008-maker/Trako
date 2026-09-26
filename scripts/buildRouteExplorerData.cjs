@@ -14,9 +14,9 @@ async function main() {
     const parts = line.split(',');
     stops.set(parts[0], {
       stopId: parts[0],
-      name: parts[2] ? parts[2].trim() : '',
-      lat: parseFloat(parts[4]),
-      lon: parseFloat(parts[5]),
+      name: parts[1] ? parts[1].trim() : '',
+      lat: parseFloat(parts[2]),
+      lon: parseFloat(parts[3]),
     });
   }
   console.log(`Loaded ${stops.size} stops.`);
