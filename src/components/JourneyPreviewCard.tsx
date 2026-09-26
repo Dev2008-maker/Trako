@@ -35,6 +35,8 @@ export type JourneyPreviewCardProps = {
   onStartRide?: (() => void) | undefined;
   onEndRide?: (() => void) | undefined;
   onClear: () => void;
+  alarmActive?: boolean | undefined;
+  onToggleAlarm?: (() => void) | undefined;
 };
 
 export function JourneyPreviewCard({
@@ -55,6 +57,8 @@ export function JourneyPreviewCard({
   onStartRide,
   onEndRide,
   onClear,
+  alarmActive = false,
+  onToggleAlarm,
 }: JourneyPreviewCardProps) {
   const stops = journey?.stops ?? [];
   const currentStop: GtfsStop | undefined = stops[currentStopIndex] ?? journey?.originStop;
@@ -205,6 +209,50 @@ export function JourneyPreviewCard({
           )}
         </div>
       )}
+
+      {/* Smart Stop Alarm State 1 Banner / Toggle */}
+      <div className="mt-3">
+        {alarmActive ? (
+          <div className="flex items-center justify-between rounded-xl bg-emerald-500/10 border border-emerald-500/25 px-3 py-2 text-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="size-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
+              <span className="font-extrabold text-emerald-700 dark:text-emerald-400">
+                🟢 Alarm Active
+              </span>
+              <span className="text-[11px] text-muted-foreground truncate">
+                (2 Stops Before Destination)
+              </span>
+            </div>
+            {onToggleAlarm && (
+              <button
+                type="button"
+                onClick={onToggleAlarm}
+                className="text-[11px] font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 cursor-pointer"
+              >
+                Disable
+              </button>
+            )}
+          </div>
+        ) : onToggleAlarm ? (
+          <button
+            type="button"
+            onClick={onToggleAlarm}
+            className="w-full flex items-center justify-between rounded-xl bg-tint/80 border border-primary/20 p-2.5 hover:bg-tint transition-all cursor-pointer group"
+          >
+            <div className="flex items-center gap-2">
+              <div className="grid size-6 place-items-center rounded-lg bg-primary/10 text-primary">
+                <Sparkles className="size-3.5" />
+              </div>
+              <span className="text-xs font-bold text-foreground">
+                🔔 Ring Before My Stop
+              </span>
+            </div>
+            <span className="rounded-md bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
+              2 Stops Before
+            </span>
+          </button>
+        ) : null}
+      </div>
 
       {/* Action CTA: Start Journey / End Ride */}
       {isRideActive ? (

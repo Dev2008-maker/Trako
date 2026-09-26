@@ -25,6 +25,18 @@ import { isInsidePune, PUNE_CENTER } from "@/lib/geo";
 import { getRouteJourney, findRoutesConnecting, searchGtfsRoutes, type GtfsJourney, type GtfsStop } from "@/lib/gtfs";
 import { calcBearing } from "@/lib/demoBuses";
 import type { BusMarkerData } from "@/components/map/types";
+import {
+  playSubtleChime,
+  playUrgentChime,
+  playArrivalChime,
+  triggerVibration,
+} from "@/lib/audioAlerts";
+import { addNotification } from "@/lib/notifications";
+import {
+  getAlarmSettings,
+  saveAlarmSettings,
+  type AlarmSettings,
+} from "@/lib/alarmSettings";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -68,6 +80,11 @@ function Home() {
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const [isSimulationPaused, setIsSimulationPaused] = useState(false);
   const notifiedStopsRef = useRef<Set<string>>(new Set());
+
+  // Stop Alarm & Notifications (Phase 3.4)
+  const [alarmActive, setAlarmActive] = useState(true);
+  const [alarmSettings, setAlarmSettings] = useState<AlarmSettings>(getAlarmSettings);
+  const [journeyStartTime, setJourneyStartTime] = useState<string | null>(null);
 
   // Location & service bounds
   const origin = coords ?? null;
@@ -175,6 +192,18 @@ function Home() {
     return indices;
   }, [selectedJourney]);
 
+  // Computed details for preview & live cards
+  const originStopName = selectedJourney?.originStop.name ?? nearest?.stop.name ?? (origin ? "Lohegaon" : "Pune Station");
+  const destinationStopName = selectedJourney?.destinationStop.name ?? destination?.name ?? "Destination";
+  const busNumber = selectedJourney?.routeShortName ?? topMatch?.route?.route_no ?? destination?.routeShortName ?? "24A";
+  const routeLongName = selectedJourney?.routeLongName ?? topMatch?.route?.name ?? `${originStopName} ➔ ${destinationStopName}`;
+  const totalStopsCount = selectedJourney?.stops.length ?? 16;
+  const remainingStopsCount = Math.max(0, totalStopsCount - 1 - currentStopIndex);
+
+  const walkMeters = nearest?.meters ?? 320;
+  const walkMinutes = Math.max(1, Math.round(walkMeters / 80));
+  const fareAmount = totalStopsCount <= 8 ? 10 : totalStopsCount <= 18 ? 15 : totalStopsCount <= 30 ? 20 : 25;
+
   // 3. BUS MOVEMENT USING GTFS SHAPES (Requirement 3: 1s updates, dwell at stops, smooth step)
   useEffect(() => {
     if (journeyState !== "active" || !selectedJourney || isSimulationPaused) return;
@@ -211,7 +240,10 @@ function Home() {
           // Check if arrived at final destination (STATE 4: Journey Completed)
           if (reachedStopIdx >= jStops.length - 1) {
             setJourneyState("completed");
-            toast.success(`You have arrived at ${jStops[jStops.length - 1]?.name}!`, {
+            playArrivalChime(alarmSettings.soundMode);
+            triggerVibration([200, 100, 200, 100, 400], alarmSettings.soundMode);
+            addNotification("destination_arrived", "Arrived at Destination", `You have arrived at ${destinationStopName}.`);
+            toast.success(`You have arrived at ${destinationStopName}!`, {
               duration: 5000,
             });
             return shape.length - 1;
@@ -221,11 +253,22 @@ function Home() {
           setIsPausedAtStop(true);
           setDwellCountdown(2);
 
-          // Notifications (Requirement 9: 2 stops away)
+          // Stop Alarm alerts (State 2: 2 stops away & State 3: 1 stop away)
           const remaining = jStops.length - 1 - reachedStopIdx;
-          if (remaining === 2 && !notifiedStopsRef.current.has("2_stops_away")) {
-            notifiedStopsRef.current.add("2_stops_away");
-            toast.info("Get ready! Your stop is coming in 2 stops.", { duration: 4000 });
+          if (alarmActive) {
+            if (remaining === 2 && !notifiedStopsRef.current.has("2_stops_away")) {
+              notifiedStopsRef.current.add("2_stops_away");
+              playSubtleChime(alarmSettings.soundMode);
+              triggerVibration(200, alarmSettings.soundMode);
+              addNotification("two_stops_away", "Get Ready", `Your stop is 2 stops away: ${destinationStopName}`);
+              toast.info(`Get ready! ${destinationStopName} is 2 stops away.`, { duration: 4000 });
+            } else if (remaining === 1 && !notifiedStopsRef.current.has("1_stop_away")) {
+              notifiedStopsRef.current.add("1_stop_away");
+              playUrgentChime(alarmSettings.soundMode);
+              triggerVibration([250, 100, 250], alarmSettings.soundMode);
+              addNotification("one_stop_away", "Next Stop is Yours", `Next stop is ${destinationStopName}!`);
+              toast.warning(`Next stop is ${destinationStopName}! Prepare to get off.`, { duration: 5000 });
+            }
           }
 
           return targetShapeIdx;
@@ -244,6 +287,9 @@ function Home() {
     isPausedAtStop,
     currentStopIndex,
     stopShapeIndices,
+    alarmActive,
+    alarmSettings,
+    destinationStopName,
   ]);
 
   // Handle Start Journey (STATE 2 -> STATE 3)
@@ -254,9 +300,12 @@ function Home() {
     setIsPausedAtStop(true);
     setDwellCountdown(2);
     notifiedStopsRef.current.clear();
+    const timeNow = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    setJourneyStartTime(timeNow);
 
-    // Boarding Reminder (Requirement 9)
+    addNotification("journey_started", "Journey Started", `Boarding Bus ${busNumber} to ${destinationStopName}`);
     toast.info("Boarding Reminder: You are at the boarding stop.", { duration: 3500 });
+    playSubtleChime(alarmSettings.soundMode);
   };
 
   // Handle Reset Journey
@@ -278,6 +327,73 @@ function Home() {
     setCurrentStopIndex(0);
     setCurrentShapeIndex(0);
     setIsPausedAtStop(false);
+  };
+
+  // Handle Skip to Next Stop (Requirement 9: Demo fast simulation)
+  const handleSkipToNextStop = () => {
+    if (!selectedJourney) return;
+    const jStops = selectedJourney.stops;
+    const nextIdx = currentStopIndex + 1;
+    if (nextIdx >= jStops.length - 1) {
+      handleCompleteJourney();
+      return;
+    }
+    setCurrentStopIndex(nextIdx);
+    const targetShapeIdx = stopShapeIndices[nextIdx] ?? (selectedJourney.shape.length - 1);
+    setCurrentShapeIndex(targetShapeIdx);
+    setIsPausedAtStop(true);
+    setDwellCountdown(2);
+
+    const remaining = jStops.length - 1 - nextIdx;
+    if (alarmActive) {
+      if (remaining === 2 && !notifiedStopsRef.current.has("2_stops_away")) {
+        notifiedStopsRef.current.add("2_stops_away");
+        playSubtleChime(alarmSettings.soundMode);
+        triggerVibration(200, alarmSettings.soundMode);
+        addNotification("two_stops_away", "Get Ready", `Your stop is 2 stops away: ${destinationStopName}`);
+        toast.info(`Get ready! ${destinationStopName} is 2 stops away.`, { duration: 4000 });
+      } else if (remaining === 1 && !notifiedStopsRef.current.has("1_stop_away")) {
+        notifiedStopsRef.current.add("1_stop_away");
+        playUrgentChime(alarmSettings.soundMode);
+        triggerVibration([250, 100, 250], alarmSettings.soundMode);
+        addNotification("one_stop_away", "Next Stop is Yours", `Next stop is ${destinationStopName}!`);
+        toast.warning(`Next stop is ${destinationStopName}! Prepare to get off.`, { duration: 5000 });
+      }
+    }
+  };
+
+  // Handle Complete Journey immediately (Requirement 9: Demo mode)
+  const handleCompleteJourney = () => {
+    if (!selectedJourney) return;
+    const jStops = selectedJourney.stops;
+    setCurrentStopIndex(jStops.length - 1);
+    setCurrentShapeIndex(selectedJourney.shape.length - 1);
+    setJourneyState("completed");
+    playArrivalChime(alarmSettings.soundMode);
+    triggerVibration([200, 100, 200, 100, 400], alarmSettings.soundMode);
+    addNotification("destination_arrived", "Arrived at Destination", `You have arrived at ${destinationStopName}.`);
+    toast.success(`You have arrived at ${destinationStopName}!`, { duration: 5000 });
+  };
+
+  // Handle Stop Alarm toggle
+  const handleToggleAlarm = () => {
+    const next = !alarmActive;
+    setAlarmActive(next);
+    if (next) {
+      addNotification("alarm_enabled", "Stop Alarm Active", `Alert scheduled for ${destinationStopName}`);
+      toast.success("Stop Alarm Active: We will alert you before your stop.");
+      playSubtleChime(alarmSettings.soundMode);
+    } else {
+      addNotification("alarm_disabled", "Stop Alarm Disabled", "Stop alarm turned off.");
+      toast.info("Stop Alarm Disabled");
+    }
+  };
+
+  // Handle Alarm Settings update
+  const handleUpdateAlarmSettings = (updates: Partial<AlarmSettings>) => {
+    const updated = saveAlarmSettings(updates);
+    setAlarmSettings(updated);
+    toast.success("Alarm preferences saved");
   };
 
   // 4. GOOGLE MAPS BLUE ROUTE PROGRESS (Requirement 4)
@@ -359,18 +475,6 @@ function Home() {
     const dest = destination?.stopId ? stops.find((s) => s.id === destination.stopId) : undefined;
     return dest && !list.some((s) => s.id === dest.id) ? [...list, dest] : list;
   }, [selectedJourney, near, destination?.stopId, stops]);
-
-  // Computed details for preview & live cards
-  const originStopName = selectedJourney?.originStop.name ?? nearest?.stop.name ?? (origin ? "Lohegaon" : "Pune Station");
-  const destinationStopName = selectedJourney?.destinationStop.name ?? destination?.name ?? "Destination";
-  const busNumber = selectedJourney?.routeShortName ?? topMatch?.route?.route_no ?? destination?.routeShortName ?? "24A";
-  const routeLongName = selectedJourney?.routeLongName ?? topMatch?.route?.name ?? `${originStopName} ➔ ${destinationStopName}`;
-  const totalStopsCount = selectedJourney?.stops.length ?? 16;
-  const remainingStopsCount = Math.max(0, totalStopsCount - 1 - currentStopIndex);
-
-  const walkMeters = nearest?.meters ?? 320;
-  const walkMinutes = Math.max(1, Math.round(walkMeters / 80));
-  const fareAmount = totalStopsCount <= 8 ? 10 : totalStopsCount <= 18 ? 15 : totalStopsCount <= 30 ? 20 : 25;
 
   const currentStop: GtfsStop = selectedJourney?.stops[currentStopIndex] ?? selectedJourney?.originStop ?? {
     stopId: "stop_0",
@@ -466,7 +570,7 @@ function Home() {
 
           {/* Floating Sheet containing the state cards */}
           <div className="trako-sheet pointer-events-auto relative mx-auto max-w-md space-y-3 px-4 pt-4 pb-24 shadow-2xl">
-            {/* STATE 4 — Journey Completed (Requirement 11) */}
+            {/* STATE 4 — Journey Completed (Requirement 8) */}
             {journeyState === "completed" && selectedJourney && (
               <JourneyCompletedCard
                 journey={selectedJourney}
@@ -474,6 +578,7 @@ function Home() {
                 distanceKm={totalDistanceKm}
                 totalStops={totalStopsCount}
                 fareAmount={fareAmount}
+                departureTimeStr={journeyStartTime ?? undefined}
                 onRepeatJourney={() => {
                   handleResetJourney();
                   handleStartJourney();
@@ -482,7 +587,7 @@ function Home() {
               />
             )}
 
-            {/* STATE 3 — Journey Started / Live Ride (Requirement 7) */}
+            {/* STATE 3 — Journey Started / Live Ride (Requirement 2 & 7) */}
             {journeyState === "active" && selectedJourney && (
               <LiveJourneySheet
                 journey={selectedJourney}
@@ -504,6 +609,12 @@ function Home() {
                 }}
                 isFollowingBus={true}
                 isDemoMode={isOutsidePune || true}
+                alarmActive={alarmActive}
+                onToggleAlarm={handleToggleAlarm}
+                alarmSettings={alarmSettings}
+                onUpdateAlarmSettings={handleUpdateAlarmSettings}
+                onSkipToNextStop={handleSkipToNextStop}
+                onCompleteJourney={handleCompleteJourney}
               />
             )}
 
@@ -524,6 +635,8 @@ function Home() {
                 fareAmount={fareAmount}
                 currentStopIndex={currentStopIndex}
                 isRideActive={false}
+                alarmActive={alarmActive}
+                onToggleAlarm={handleToggleAlarm}
                 onStartRide={handleStartJourney}
                 onEndRide={handleExitJourney}
                 onClear={handleExitJourney}
