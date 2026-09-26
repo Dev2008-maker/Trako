@@ -100,6 +100,9 @@ export default function MapCanvas({
   user,
   stops = [],
   selectedStopId,
+  currentStopId,
+  completedStopIds,
+  isRideActive = false,
   destination,
   buses = [],
   line,
@@ -182,8 +185,11 @@ export default function MapCanvas({
 
   const start = center ?? user ?? PUNE_CENTER;
 
-  // Maximum 5 visible nearby stops
+  // Stop list to render: if destination or ride is active, show all stops belonging to this route
   const visibleStops = useMemo(() => {
+    if (destination || isRideActive) {
+      return stops;
+    }
     const list = stops.slice(0, 5);
     if (selectedStopId && !list.some((s) => s.id === selectedStopId)) {
       const sel = stops.find((s) => s.id === selectedStopId);
@@ -192,7 +198,7 @@ export default function MapCanvas({
       }
     }
     return list;
-  }, [stops, selectedStopId]);
+  }, [stops, selectedStopId, destination, isRideActive]);
 
   const hasLiveBuses = useMemo(() => buses.some((b) => b.status === "live"), [buses]);
 
@@ -334,13 +340,18 @@ export default function MapCanvas({
     }
   }, [ready, user?.lat, user?.lon]);
 
-  // Stop markers (max 5 visible, selected stop larger & animated)
+  // Stop markers (upcoming: small purple, current: glowing green, completed: grey)
   useEffect(() => {
     if (!ready || !map.current) return;
     const seen = new Set<string>();
+    const completedSet = new Set(completedStopIds ?? []);
+
     for (const stop of visibleStops) {
       seen.add(stop.id);
-      const selected = stop.id === selectedStopId;
+      const isCurrent = isRideActive && currentStopId === stop.id;
+      const isCompleted = isRideActive && completedSet.has(stop.id);
+      const selected = !isRideActive && stop.id === selectedStopId;
+
       let marker = stopMarkers.current.get(stop.id);
       if (!marker) {
         const el = document.createElement("button");
@@ -365,13 +376,21 @@ export default function MapCanvas({
         marker.setLngLat([stop.lon, stop.lat]);
       }
       const el = marker.getElement();
-      el.className = selected
-        ? "trako-stop trako-stop-selected"
-        : "trako-stop";
-      
-      if (selected) {
+
+      if (isCurrent) {
+        el.className = "trako-trip-stop-current";
+        el.innerHTML = `<div class="trako-stop-callout">${stop.name}</div>`;
+      } else if (isCompleted) {
+        el.className = "trako-trip-stop-completed";
+        el.innerHTML = "";
+      } else if (isRideActive) {
+        el.className = "trako-trip-stop-upcoming";
+        el.innerHTML = "";
+      } else if (selected) {
+        el.className = "trako-stop trako-stop-selected";
         el.innerHTML = `<div class="trako-stop-callout">${stop.name}</div>`;
       } else {
+        el.className = "trako-stop";
         el.innerHTML = "";
       }
     }
@@ -381,7 +400,7 @@ export default function MapCanvas({
         stopMarkers.current.delete(id);
       }
     }
-  }, [ready, visibleStops, selectedStopId]);
+  }, [ready, visibleStops, selectedStopId, currentStopId, completedStopIds, isRideActive]);
 
   // ── Premium live bus markers (Phase 2.4A + 2.4.2) ──────────────────────────────
   useEffect(() => {
@@ -491,12 +510,14 @@ export default function MapCanvas({
     }
   }, [ready, destination?.lat, destination?.lon, destination?.name]);
 
-  // Route polylines: Active remaining route (light blue) + Previously travelled route (muted light grey/blue)
+  const prevRideActive = useRef(isRideActive);
+
+  // Route polylines: Active remaining route (#4EA8FF) + Completed travelled route (#94A3B8)
   useEffect(() => {
     const instance = map.current;
     if (!ready || !instance) return;
 
-    // 1. Previously travelled line (muted light grey/blue)
+    // 1. Completed travelled line (muted grey)
     const travelledData = {
       type: "Feature" as const,
       properties: {},
@@ -512,18 +533,18 @@ export default function MapCanvas({
         type: "line",
         source: "trako-travelled-route",
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#FFFFFF", "line-width": 8, "line-opacity": 0.8 },
+        paint: { "line-color": "#FFFFFF", "line-width": 11.5, "line-opacity": 0.95 },
       });
       instance.addLayer({
         id: "trako-travelled-line",
         type: "line",
         source: "trako-travelled-route",
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#94A3B8", "line-width": 5, "line-opacity": 0.8 },
+        paint: { "line-color": "#94A3B8", "line-width": 7.5, "line-opacity": 0.95 },
       });
     }
 
-    // 2. Active remaining route (light blue active route line)
+    // 2. Active remaining route line (Google Maps light-blue #4EA8FF, width 7.5-8px, white casing 11.5px)
     const data = {
       type: "Feature" as const,
       properties: {},
@@ -531,9 +552,45 @@ export default function MapCanvas({
     };
     const source = instance.getSource("trako-route");
     if (source && "setData" in source) {
+      // Check if we just transitioned to active ride -> animate drawing from origin to destination
+      if (!prevRideActive.current && isRideActive && line && line.length > 1) {
+        prevRideActive.current = true;
+        const fullCoords = line;
+        const startTime = performance.now();
+        const duration = 900;
+
+        const animateDraw = (now: number) => {
+          const elapsed = now - startTime;
+          const progress = Math.min(1, elapsed / duration);
+          const eased = progress < 0.5 ? 2 * progress * progress : -1 + (4 - 2 * progress) * progress;
+          const count = Math.max(2, Math.floor(eased * fullCoords.length));
+          const partial = fullCoords.slice(0, count);
+
+          const rSource = instance.getSource("trako-route") as maplibregl.GeoJSONSource | undefined;
+          if (rSource && "setData" in rSource) {
+            rSource.setData({
+              type: "Feature",
+              properties: {},
+              geometry: { type: "LineString", coordinates: partial },
+            });
+          }
+
+          if (progress < 1) {
+            requestAnimationFrame(animateDraw);
+          } else {
+            if (rSource && "setData" in rSource) {
+              rSource.setData(data);
+            }
+          }
+        };
+        requestAnimationFrame(animateDraw);
+        return;
+      }
+
       (source as maplibregl.GeoJSONSource).setData(data);
       return;
     }
+
     instance.addSource("trako-route", { type: "geojson", data });
     
     // Crisp white casing line
@@ -542,18 +599,20 @@ export default function MapCanvas({
       type: "line",
       source: "trako-route",
       layout: { "line-cap": "round", "line-join": "round" },
-      paint: { "line-color": "#FFFFFF", "line-width": 8, "line-opacity": 0.95 },
+      paint: { "line-color": "#FFFFFF", "line-width": 11.5, "line-opacity": 1.0 },
     });
 
-    // Active route line: light blue
+    // Google Maps style light-blue route (#4EA8FF)
     instance.addLayer({
       id: "trako-route-line",
       type: "line",
       source: "trako-route",
       layout: { "line-cap": "round", "line-join": "round" },
-      paint: { "line-color": "#38BDF8", "line-width": 5, "line-opacity": 0.95 },
+      paint: { "line-color": "#4EA8FF", "line-width": 7.5, "line-opacity": 1.0 },
     });
-  }, [ready, line, travelledLine]);
+
+    prevRideActive.current = isRideActive;
+  }, [ready, line, travelledLine, isRideActive]);
 
   // Walking path polyline (dashed line from Pickup Point to nearest boarding stop)
   useEffect(() => {
@@ -595,10 +654,11 @@ export default function MapCanvas({
     });
   }, [ready, walkingLine]);
 
-  // Automatic smooth bounds fitting when route preview or destination is active
+  // Automatic smooth bounds fitting before journey starts (shows entire route)
   useEffect(() => {
     const instance = map.current;
     if (!ready || !instance || !destination) return;
+    if (isRideActive) return; // Do not fit bounds during active tracking — camera follows bus
 
     const bounds = new maplibregl.LngLatBounds();
     bounds.extend([destination.lon, destination.lat]);
@@ -611,17 +671,42 @@ export default function MapCanvas({
     }
 
     instance.fitBounds(bounds, {
-      padding: { top: 60, bottom: 280, left: 40, right: 40 },
+      padding: { top: 70, bottom: 290, left: 40, right: 40 },
       maxZoom: 15,
       duration: 1000,
       easing: easeInOut,
       essential: true,
     });
-  }, [ready, destination?.lat, destination?.lon, line, walkingLine, user?.lat, user?.lon]);
+  }, [ready, destination?.lat, destination?.lon, line, walkingLine, user?.lat, user?.lon, isRideActive]);
+
+  // Follow live bus camera animation as it moves along GTFS shape
+  useEffect(() => {
+    if (!isRideActive || buses.length === 0 || !map.current) return;
+    const bus = buses[0];
+    if (!bus) return;
+    map.current.easeTo({
+      center: [bus.lon, bus.lat],
+      zoom: 15.5,
+      duration: 1800,
+      easing: easeInOut,
+    });
+  }, [isRideActive, buses]);
 
   function recenter() {
     setIsLocating(true);
     setTimeout(() => setIsLocating(false), 800);
+    // If live ride is active, return camera to live bus
+    if (isRideActive && buses.length > 0 && buses[0]) {
+      const bus = buses[0];
+      map.current?.flyTo({
+        center: [bus.lon, bus.lat],
+        zoom: 15.5,
+        duration: 800,
+        easing: easeInOut,
+        essential: true,
+      });
+      return;
+    }
     const target = user ?? center ?? PUNE_CENTER;
     map.current?.flyTo({
       center: [target.lon, target.lat],
@@ -656,7 +741,7 @@ export default function MapCanvas({
       <button
         type="button"
         onClick={recenter}
-        aria-label="Recentre map on my location"
+        aria-label="Recentre map"
         className="trako-gps-btn absolute top-4 right-4 z-20"
       >
         <Locate
@@ -664,7 +749,7 @@ export default function MapCanvas({
         />
       </button>
 
-      {/* Floating purple Track Bus FAB capsule — bottom-right */}
+      {/* Floating Track Bus button — below GPS button in clear map area */}
       <button
         type="button"
         onClick={() => {
@@ -686,8 +771,8 @@ export default function MapCanvas({
             });
           }
         }}
-        className={`trako-track-btn absolute bottom-8 right-4 z-20 cursor-pointer ${
-          isFollowingBus ? "trako-track-btn--following" : ""
+        className={`trako-track-btn absolute top-[58px] right-4 z-20 cursor-pointer ${
+          isFollowingBus || isRideActive ? "trako-track-btn--following" : ""
         }`}
       >
         {/* LIVE or FOLLOWING indicator with ripple */}

@@ -27,4 +27,7 @@ export type MapViewProps = {
   onStopClick?: ((stopId: string) => void) | undefined;
   className?: string | undefined;
   isOutsidePune?: boolean | undefined;
+  currentStopId?: string | null | undefined;
+  completedStopIds?: string[] | undefined;
+  isRideActive?: boolean | undefined;
 };
