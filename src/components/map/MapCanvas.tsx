@@ -802,15 +802,6 @@ export default function MapCanvas({
     });
   }
 
-  if (false as boolean) {
-    return (
-      <div className={`grid place-items-center bg-muted/30 px-6 text-center w-full h-full ${className}`}>
-        <p className="max-w-xs text-sm text-muted-foreground">
-          The map could not be loaded right now. Nearby stops and schedules below still work.
-        </p>
-      </div>
-    );
-  }
 
   const isUserOutsidePune = Boolean(user && !isInsidePune(user));
 
