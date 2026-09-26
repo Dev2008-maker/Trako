@@ -7,6 +7,9 @@ import { getMapConfig } from "@/lib/maptiler.functions";
 import { isInsidePune, PUNE_CENTER } from "@/lib/geo";
 import type { MapViewProps } from "./types";
 import type { BusMarkerData } from "./types";
+import { cn } from "@/lib/utils";
+
+const FALLBACK_STYLE = "/trako-map-style.json";
 
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t);
 
@@ -188,10 +191,9 @@ export default function MapCanvas({
     queryFn: () => getMapConfig(),
   });
 
-  const apiKey = import.meta.env['VITE_MAPTILER_API_KEY'] || "";
-  const styleUrl =
-    config?.style ||
-    (apiKey ? `https://api.maptiler.com/maps/base-light/style.json?key=${apiKey}` : "/trako-map-style.json");
+  // Wait for the server-provided style before creating the map; creating it early with a
+  // guessed style meant the map never re-initialised when the real style arrived.
+  const styleUrl: string | Record<string, unknown> | null = config?.style ?? (isError ? FALLBACK_STYLE : null);
 
   const start = center ?? user ?? PUNE_CENTER;
 
@@ -235,14 +237,26 @@ export default function MapCanvas({
     if (!holder.current || map.current || !styleUrl) return;
     const instance = new maplibregl.Map({
       container: holder.current,
-      style: styleUrl,
+      style: styleUrl as maplibregl.StyleSpecification | string,
       center: [start.lon, start.lat],
       zoom: 12.5,
       attributionControl: { compact: true },
     });
 
+    // If the remote style fails before the map loads, fall back to the bundled Trako style once.
+    let fellBack = styleUrl === FALLBACK_STYLE;
+    instance.on("error", (ev) => {
+      if (fellBack || instance.loaded()) return;
+      const msg = String((ev as { error?: { message?: string } }).error?.message ?? "");
+      if (msg.includes("style") || msg.includes("AJAXError") || msg.includes("404")) {
+        fellBack = true;
+        instance.setStyle(FALLBACK_STYLE);
+      }
+    });
+
     instance.on("load", () => {
       setReady(true);
+      instance.resize();
       try {
         const style = instance.getStyle();
         if (style && style.layers) {
@@ -788,15 +802,6 @@ export default function MapCanvas({
     });
   }
 
-  if (isError) {
-    return (
-      <div className={`grid place-items-center bg-muted/30 px-6 text-center w-full h-full ${className}`}>
-        <p className="max-w-xs text-sm text-muted-foreground">
-          The map could not be loaded right now. Nearby stops and schedules below still work.
-        </p>
-      </div>
-    );
-  }
 
   const isUserOutsidePune = Boolean(user && !isInsidePune(user));
 
@@ -853,7 +858,7 @@ export default function MapCanvas({
 
   return (
     <div
-      className={`trako-map-wrapper relative w-full h-[60vh] max-h-[60dvh] sm:h-[65vh] sm:max-h-[65dvh] lg:h-full lg:max-h-full overflow-hidden select-none ${className}`}
+      className={cn("trako-map-wrapper relative w-full h-[60vh] max-h-[60dvh] sm:h-[65vh] sm:max-h-[65dvh] lg:h-full lg:max-h-full overflow-hidden select-none", className)}
     >
       <div
         ref={holder}

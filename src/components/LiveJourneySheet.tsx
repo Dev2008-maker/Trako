@@ -188,7 +188,7 @@ export function LiveJourneySheet({
             <div className="flex items-center gap-1.5">
               <span className="size-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
               <p className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                LIVE PMPML TRACKING
+                {isDemoMode ? "DEMO LIVE" : "LIVE"}
               </p>
             </div>
             <h2 className="mt-0.5 text-base font-display font-extrabold text-foreground truncate">

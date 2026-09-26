@@ -14,9 +14,9 @@ async function main() {
     const parts = line.split(',');
     stops.set(parts[0], {
       stopId: parts[0],
-      name: parts[2] ? parts[2].trim() : '',
-      lat: parseFloat(parts[4]),
-      lon: parseFloat(parts[5]),
+      name: parts[1] ? parts[1].trim() : '',
+      lat: parseFloat(parts[2]),
+      lon: parseFloat(parts[3]),
     });
   }
   console.log(`Loaded ${stops.size} stops.`);
@@ -60,7 +60,7 @@ async function main() {
     const parts = line.split(',');
     const route_id = parts[0];
     const trip_id = parts[2];
-    const shape_id = parts[7] || parts[6];
+    const shape_id = parts[5];
     const direction_id = parseInt(parts[5], 10) || 0;
     if (!routeTrips.has(route_id)) routeTrips.set(route_id, []);
     routeTrips.get(route_id).push({ trip_id, shape_id, direction_id });
@@ -238,7 +238,7 @@ async function main() {
       origin: originStopName,
       destination: destStopName,
       stopsCount: resolvedStops.length || 24,
-      operatingStatus: 'Active · Regular Service',
+      operatingStatus: 'Scheduled Service',
       firstBus,
       lastBus,
       frequency,
