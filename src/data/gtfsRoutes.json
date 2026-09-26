@@ -1,0 +1,2165 @@
+[
+  {
+    "id": "100",
+    "shortName": "100",
+    "longName": "Hinjawadi Maan Phase 3 ⇆ Ma Na Pa Dengle Pul Nadikathi",
+    "origin": "Hinjawadi Maan Phase 3",
+    "destination": "Ma Na Pa Dengle Pul Nadikathi"
+  },
+  {
+    "id": "103",
+    "shortName": "103",
+    "longName": "Kothrud Depot ⇆ Katraj",
+    "origin": "Kothrud Depot",
+    "destination": "Katraj"
+  },
+  {
+    "id": "104",
+    "shortName": "104",
+    "longName": "Dsk Vishwa ⇆ Shivaji Nagar",
+    "origin": "Dsk Vishwa",
+    "destination": "Shivaji Nagar"
+  },
+  {
+    "id": "107",
+    "shortName": "107",
+    "longName": "Pimplegurav ⇆ Ganpati Matha",
+    "origin": "Pimplegurav",
+    "destination": "Ganpati Matha"
+  },
+  {
+    "id": "108",
+    "shortName": "108",
+    "longName": "Pune Station Moledina Road ⇆ Sutardara",
+    "origin": "Pune Station Moledina Road",
+    "destination": "Sutardara"
+  },
+  {
+    "id": "111M",
+    "shortName": "111M",
+    "longName": "Ma Na Pa Congress Bhavan ⇆ Bhekrai Nagar",
+    "origin": "Ma Na Pa Congress Bhavan",
+    "destination": "Bhekrai Nagar"
+  },
+  {
+    "id": "113",
+    "shortName": "113",
+    "longName": "Sangvi Vasantdada Putala ⇆ Vasant Talkies",
+    "origin": "Sangvi Vasantdada Putala",
+    "destination": "Vasant Talkies"
+  },
+  {
+    "id": "114",
+    "shortName": "114",
+    "longName": "Bajirao Padale Chowk Mhalunge ⇆ Ma Na Pa Main Gate",
+    "origin": "Bajirao Padale Chowk Mhalunge",
+    "destination": "Ma Na Pa Main Gate"
+  },
+  {
+    "id": "115",
+    "shortName": "115",
+    "longName": "Hinjawadi Maan Phase 3 ⇆ Pune Station Moledina Stand",
+    "origin": "Hinjawadi Maan Phase 3",
+    "destination": "Pune Station Moledina Stand"
+  },
+  {
+    "id": "117",
+    "shortName": "117",
+    "longName": "Dhayareshwar Mandir ⇆ Swargate Natraj Stand",
+    "origin": "Dhayareshwar Mandir",
+    "destination": "Swargate Natraj Stand"
+  },
+  {
+    "id": "118A",
+    "shortName": "118A",
+    "longName": "Suncity ⇆ Swargate Natraj Stand",
+    "origin": "Suncity",
+    "destination": "Swargate Natraj Stand"
+  },
+  {
+    "id": "118",
+    "shortName": "118",
+    "longName": "Vadgaon Budruk Stand ⇆ Swargate Natraj Stand",
+    "origin": "Vadgaon Budruk Stand",
+    "destination": "Swargate Natraj Stand"
+  },
+  {
+    "id": "119A",
+    "shortName": "119A",
+    "longName": "Charholigaon ⇆ Ma Na Pa Daphale Garage",
+    "origin": "Charholigaon",
+    "destination": "Ma Na Pa Daphale Garage"
+  },
+  {
+    "id": "119",
+    "shortName": "119",
+    "longName": "Alandi ⇆ Ma Na Pa Daphale Garage",
+    "origin": "Alandi",
+    "destination": "Ma Na Pa Daphale Garage"
+  },
+  {
+    "id": "11A",
+    "shortName": "11A",
+    "longName": "Kasarwadi Railway Station ⇆ Marketyard Depot",
+    "origin": "Kasarwadi Railway Station",
+    "destination": "Marketyard Depot"
+  },
+  {
+    "id": "11C",
+    "shortName": "11C",
+    "longName": "Pimplegurav ⇆ Katraj",
+    "origin": "Pimplegurav",
+    "destination": "Katraj"
+  },
+  {
+    "id": "11",
+    "shortName": "11",
+    "longName": "Pimplegurav ⇆ Marketyard Depot",
+    "origin": "Pimplegurav",
+    "destination": "Marketyard Depot"
+  },
+  {
+    "id": "120",
+    "shortName": "120",
+    "longName": "Endurance Systems Chakan Mahalunge ⇆ Bhosari Chakan Road",
+    "origin": "Endurance Systems Chakan Mahalunge",
+    "destination": "Bhosari Chakan Road"
+  },
+  {
+    "id": "121",
+    "shortName": "121",
+    "longName": "Bhosari Terminal ⇆ Ma Na Pa Main Stand",
+    "origin": "Bhosari Terminal",
+    "destination": "Ma Na Pa Main Stand"
+  },
+  {
+    "id": "122",
+    "shortName": "122",
+    "longName": "Chinchwadgaon ⇆ Ma Na Pa Main Stand",
+    "origin": "Chinchwadgaon",
+    "destination": "Ma Na Pa Main Stand"
+  },
+  {
+    "id": "123",
+    "shortName": "123",
+    "longName": "Nigdi Bhakti Shakti ⇆ Ma Na Pa Main Stand",
+    "origin": "Nigdi Bhakti Shakti",
+    "destination": "Ma Na Pa Main Stand"
+  },
+  {
+    "id": "124",
+    "shortName": "124",
+    "longName": "Neilsoft Company infosys Phase 3 ⇆ Aundhgaon",
+    "origin": "Neilsoft Company infosys Phase 3",
+    "destination": "Aundhgaon"
+  },
+  {
+    "id": "126",
+    "shortName": "126",
+    "longName": "Pimple Nilakh ⇆ Bopkhel",
+    "origin": "Pimple Nilakh",
+    "destination": "Bopkhel"
+  },
+  {
+    "id": "12",
+    "shortName": "12",
+    "longName": "Shivaji Nagar ⇆ Upper Depot",
+    "origin": "Shivaji Nagar",
+    "destination": "Upper Depot"
+  },
+  {
+    "id": "130",
+    "shortName": "130",
+    "longName": "Swargate ⇆ Narhegaon",
+    "origin": "Swargate",
+    "destination": "Narhegaon"
+  },
+  {
+    "id": "131",
+    "shortName": "131",
+    "longName": "Golegaon Gram Panchayat ⇆ Ma Na Pa Dengle Pul Nadikhathi",
+    "origin": "Golegaon Gram Panchayat",
+    "destination": "Ma Na Pa Dengle Pul Nadikhathi"
+  },
+  {
+    "id": "132",
+    "shortName": "132",
+    "longName": "Shubham Society Nagar Road ⇆ Ma Na Pa Shramik Bhavan",
+    "origin": "Shubham Society Nagar Road",
+    "destination": "Ma Na Pa Shramik Bhavan"
+  },
+  {
+    "id": "133A",
+    "shortName": "133A",
+    "longName": "Columbia Hospital ⇆ Ma Na Pa Shramik Bhavan",
+    "origin": "Columbia Hospital",
+    "destination": "Ma Na Pa Shramik Bhavan"
+  },
+  {
+    "id": "133",
+    "shortName": "133",
+    "longName": "Anand Park Vadgaon Sheri Road ⇆ Ma Na Pa Shramik Bhavan",
+    "origin": "Anand Park Vadgaon Sheri Road",
+    "destination": "Ma Na Pa Shramik Bhavan"
+  },
+  {
+    "id": "135",
+    "shortName": "135",
+    "longName": "Ranjangaon Sandas ⇆ Ma Na Pa Shramik Bhavan",
+    "origin": "Ranjangaon Sandas",
+    "destination": "Ma Na Pa Shramik Bhavan"
+  },
+  {
+    "id": "136",
+    "shortName": "136",
+    "longName": "Vadegaon ⇆ Kesnand Phata Wagholi",
+    "origin": "Vadegaon",
+    "destination": "Kesnand Phata Wagholi"
+  },
+  {
+    "id": "137",
+    "shortName": "137",
+    "longName": "Pargaon Salu Malu ⇆ Ma Na Pa Shramik Bhavan",
+    "origin": "Pargaon Salu Malu",
+    "destination": "Ma Na Pa Shramik Bhavan"
+  },
+  {
+    "id": "139A",
+    "shortName": "139A",
+    "longName": "Nigdi Bhakti Shakti Stand ⇆ Bhekrai Nagar",
+    "origin": "Nigdi Bhakti Shakti Stand",
+    "destination": "Bhekrai Nagar"
+  },
+  {
+    "id": "139",
+    "shortName": "139",
+    "longName": "Nigdi Bhakti Shakti ⇆ Shewalewadi Depot",
+    "origin": "Nigdi Bhakti Shakti",
+    "destination": "Shewalewadi Depot"
+  },
+  {
+    "id": "13",
+    "shortName": "13",
+    "longName": "Shivaji Nagar ⇆ Upper Depot",
+    "origin": "Shivaji Nagar",
+    "destination": "Upper Depot"
+  },
+  {
+    "id": "140A",
+    "shortName": "140A",
+    "longName": "Pune Station Jayprakash Stand ⇆ Katraj Kondhwa Road",
+    "origin": "Pune Station Jayprakash Stand",
+    "destination": "Katraj Kondhwa Road"
+  },
+  {
+    "id": "140",
+    "shortName": "140",
+    "longName": "Pune Station Jayprakash Stand ⇆ Upper Depot",
+    "origin": "Pune Station Jayprakash Stand",
+    "destination": "Upper Depot"
+  },
+  {
+    "id": "141",
+    "shortName": "141",
+    "longName": "Pune Station Jayprakash Stand ⇆ Kumar Pruthvi Kondhwa",
+    "origin": "Pune Station Jayprakash Stand",
+    "destination": "Kumar Pruthvi Kondhwa"
+  },
+  {
+    "id": "142",
+    "shortName": "142",
+    "longName": "Ghotawade Phata ⇆ Pune Station Moledina Stand",
+    "origin": "Ghotawade Phata",
+    "destination": "Pune Station Moledina Stand"
+  },
+  {
+    "id": "143",
+    "shortName": "143",
+    "longName": "Pune Station Moledina Stand ⇆ Galinde Path",
+    "origin": "Pune Station Moledina Stand",
+    "destination": "Galinde Path"
+  },
+  {
+    "id": "144A",
+    "shortName": "144A",
+    "longName": "Pune Station Moledina Stand ⇆ Aditya Garden City",
+    "origin": "Pune Station Moledina Stand",
+    "destination": "Aditya Garden City"
+  },
+  {
+    "id": "144",
+    "shortName": "144",
+    "longName": "Pune Station Moledina Stand ⇆ Nda 10 No. Gate",
+    "origin": "Pune Station Moledina Stand",
+    "destination": "Nda 10 No. Gate"
+  },
+  {
+    "id": "145",
+    "shortName": "145",
+    "longName": "Sutarwadi Depot ⇆ Pune Station Depot",
+    "origin": "Sutarwadi Depot",
+    "destination": "Pune Station Depot"
+  },
+  {
+    "id": "146",
+    "shortName": "146",
+    "longName": "Gokhale Nagar Police Line ⇆ Pune Station Jayprakash Stand",
+    "origin": "Gokhale Nagar Police Line",
+    "destination": "Pune Station Jayprakash Stand"
+  },
+  {
+    "id": "147",
+    "shortName": "147",
+    "longName": "Nhavi Sandas ⇆ Ma Na Pa Shramik Bhavan",
+    "origin": "Nhavi Sandas",
+    "destination": "Ma Na Pa Shramik Bhavan"
+  },
+  {
+    "id": "148A",
+    "shortName": "148A",
+    "longName": "Bhosari Terminal ⇆ Bhekrai Nagar",
+    "origin": "Bhosari Terminal",
+    "destination": "Bhekrai Nagar"
+  },
+  {
+    "id": "148",
+    "shortName": "148",
+    "longName": "Pimplegurav ⇆ Shewalewadi Depot",
+    "origin": "Pimplegurav",
+    "destination": "Shewalewadi Depot"
+  },
+  {
+    "id": "149",
+    "shortName": "149",
+    "longName": "Nigdi Bhakti Shakti Stand ⇆ Hadapsar Gadital",
+    "origin": "Nigdi Bhakti Shakti Stand",
+    "destination": "Hadapsar Gadital"
+  },
+  {
+    "id": "151",
+    "shortName": "151",
+    "longName": "Alandi ⇆ Pune Station Moledina Stand",
+    "origin": "Alandi",
+    "destination": "Pune Station Moledina Stand"
+  },
+  {
+    "id": "152",
+    "shortName": "152",
+    "longName": "Lohegaon ⇆ Ma Na Pa Daphale Garage",
+    "origin": "Lohegaon",
+    "destination": "Ma Na Pa Daphale Garage"
+  },
+  {
+    "id": "153",
+    "shortName": "153",
+    "longName": "Alandi ⇆ Kharadi Gaon",
+    "origin": "Alandi",
+    "destination": "Kharadi Gaon"
+  },
+  {
+    "id": "154",
+    "shortName": "154",
+    "longName": "Dimond Water Park ⇆ Pune Station Moledina Stand",
+    "origin": "Dimond Water Park",
+    "destination": "Pune Station Moledina Stand"
+  },
+  {
+    "id": "155",
+    "shortName": "155",
+    "longName": "Dimond Water Park ⇆ Pune Station Moledina Stand",
+    "origin": "Dimond Water Park",
+    "destination": "Pune Station Moledina Stand"
+  },
+  {
+    "id": "157",
+    "shortName": "157",
+    "longName": "JSPM Vidhyapith Wagholi ⇆ Ma Na Pa Shramik Bhavan",
+    "origin": "JSPM Vidhyapith Wagholi",
+    "destination": "Ma Na Pa Shramik Bhavan"
+  },
+  {
+    "id": "158A",
+    "shortName": "158A",
+    "longName": "Dimond Water Park ⇆ Ma Na Pa Dengle Pul Nadikathi",
+    "origin": "Dimond Water Park",
+    "destination": "Ma Na Pa Dengle Pul Nadikathi"
+  },
+  {
+    "id": "158",
+    "shortName": "158",
+    "longName": "Prime City Charholi ⇆ Ma Na Pa Dengle Pul Nadikathi",
+    "origin": "Prime City Charholi",
+    "destination": "Ma Na Pa Dengle Pul Nadikathi"
+  },
+  {
+    "id": "159B",
+    "shortName": "159B",
+    "longName": "Loni Dhamni ⇆ Ma Na Pa Shramik Bhavan",
+    "origin": "Loni Dhamni",
+    "destination": "Ma Na Pa Shramik Bhavan"
+  },
+  {
+    "id": "159",
+    "shortName": "159",
+    "longName": "Talegaon Dhamdhere Bazar ⇆ Ma Na Pa Shramik Bhavan",
+    "origin": "Talegaon Dhamdhere Bazar",
+    "destination": "Ma Na Pa Shramik Bhavan"
+  },
+  {
+    "id": "15",
+    "shortName": "15",
+    "longName": "Dsk Vishwa ⇆ Bhekrai Nagar",
+    "origin": "Dsk Vishwa",
+    "destination": "Bhekrai Nagar"
+  },
+  {
+    "id": "160",
+    "shortName": "160",
+    "longName": "Manjari Budruk ⇆ Shaniwarwada Stand",
+    "origin": "Manjari Budruk",
+    "destination": "Shaniwarwada Stand"
+  },
+  {
+    "id": "161",
+    "shortName": "161",
+    "longName": "Zilla Parishad Shala Karegaon ⇆ Kesnand Phata Wagholi",
+    "origin": "Zilla Parishad Shala Karegaon",
+    "destination": "Kesnand Phata Wagholi"
+  },
+  {
+    "id": "162",
+    "shortName": "162",
+    "longName": "Pabal Gaon ⇆ Ma Na Pa Shramik Bhavan",
+    "origin": "Pabal Gaon",
+    "destination": "Ma Na Pa Shramik Bhavan"
+  },
+  {
+    "id": "163",
+    "shortName": "163",
+    "longName": "Dhole Patil Collage ⇆ Pune Station Ambedkar Putala",
+    "origin": "Dhole Patil Collage",
+    "destination": "Pune Station Ambedkar Putala"
+  },
+  {
+    "id": "164",
+    "shortName": "164",
+    "longName": "Nhavare ⇆ Ma Na Pa Shramik Bhavan",
+    "origin": "Nhavare",
+    "destination": "Ma Na Pa Shramik Bhavan"
+  },
+  {
+    "id": "165",
+    "shortName": "165",
+    "longName": "Vadgaon Sheri ⇆ Ma Na Pa Dengle Pul Nadikhathi",
+    "origin": "Vadgaon Sheri",
+    "destination": "Ma Na Pa Dengle Pul Nadikhathi"
+  },
+  {
+    "id": "166",
+    "shortName": "166",
+    "longName": "Lohgaon Airport ⇆ Pune Station Ambedkar Putala",
+    "origin": "Lohgaon Airport",
+    "destination": "Pune Station Ambedkar Putala"
+  },
+  {
+    "id": "167",
+    "shortName": "167",
+    "longName": "Kesnand Phata Wagholi ⇆ Bhekrai Nagar",
+    "origin": "Kesnand Phata Wagholi",
+    "destination": "Bhekrai Nagar"
+  },
+  {
+    "id": "168",
+    "shortName": "168",
+    "longName": "Keshav Nagar ⇆ Shaniwarwada Stand",
+    "origin": "Keshav Nagar",
+    "destination": "Shaniwarwada Stand"
+  },
+  {
+    "id": "169",
+    "shortName": "169",
+    "longName": "Keshav Nagar ⇆ Shaniwarwada Stand",
+    "origin": "Keshav Nagar",
+    "destination": "Shaniwarwada Stand"
+  },
+  {
+    "id": "172",
+    "shortName": "172",
+    "longName": "Pune Station Jayprakash Stand ⇆ Yewalewadi",
+    "origin": "Pune Station Jayprakash Stand",
+    "destination": "Yewalewadi"
+  },
+  {
+    "id": "174",
+    "shortName": "174",
+    "longName": "Nda 10 No. Gate ⇆ Pune Station Moledina Stand",
+    "origin": "Nda 10 No. Gate",
+    "destination": "Pune Station Moledina Stand"
+  },
+  {
+    "id": "175",
+    "shortName": "175",
+    "longName": "Hadapsar Gadital ⇆ Shaniwarwada Stand",
+    "origin": "Hadapsar Gadital",
+    "destination": "Shaniwarwada Stand"
+  },
+  {
+    "id": "176",
+    "shortName": "176",
+    "longName": "Vadachi Wadi ⇆ Pune Station Depot",
+    "origin": "Vadachi Wadi",
+    "destination": "Pune Station Depot"
+  },
+  {
+    "id": "177",
+    "shortName": "177",
+    "longName": "Bhangire Nagar Mahamadwadi ⇆ Pune Station Depot",
+    "origin": "Bhangire Nagar Mahamadwadi",
+    "destination": "Pune Station Depot"
+  },
+  {
+    "id": "179",
+    "shortName": "179",
+    "longName": "Lohegaon Khandoba Mal ⇆ Hadapsar Gadital",
+    "origin": "Lohegaon Khandoba Mal",
+    "destination": "Hadapsar Gadital"
+  },
+  {
+    "id": "17",
+    "shortName": "17",
+    "longName": "Narhegaon ⇆ Shivaji Nagar",
+    "origin": "Narhegaon",
+    "destination": "Shivaji Nagar"
+  },
+  {
+    "id": "180",
+    "shortName": "180",
+    "longName": "Bhekrai Nagar ⇆ Na Ta Wadi",
+    "origin": "Bhekrai Nagar",
+    "destination": "Na Ta Wadi"
+  },
+  {
+    "id": "183",
+    "shortName": "183",
+    "longName": "Wagholi Kesnand Phata ⇆ Hadapsar Gadital Solapur Road",
+    "origin": "Wagholi Kesnand Phata",
+    "destination": "Hadapsar Gadital Solapur Road"
+  },
+  {
+    "id": "184",
+    "shortName": "184",
+    "longName": "Ramdara ⇆ Hadapsar Gadital Solapur Road",
+    "origin": "Ramdara",
+    "destination": "Hadapsar Gadital Solapur Road"
+  },
+  {
+    "id": "185",
+    "shortName": "185",
+    "longName": "Kesnand Phata Wagholi ⇆ Hadapsar Gadital",
+    "origin": "Kesnand Phata Wagholi",
+    "destination": "Hadapsar Gadital"
+  },
+  {
+    "id": "188",
+    "shortName": "188",
+    "longName": "Katraj Kondhwa Road ⇆ Hadapsar Gadital",
+    "origin": "Katraj Kondhwa Road",
+    "destination": "Hadapsar Gadital"
+  },
+  {
+    "id": "189",
+    "shortName": "189",
+    "longName": "Dhangar Vasti ⇆ Hadapsar Gadital",
+    "origin": "Dhangar Vasti",
+    "destination": "Hadapsar Gadital"
+  },
+  {
+    "id": "192",
+    "shortName": "192",
+    "longName": "Vadachi Wadi ⇆ Hadapsar Gadital",
+    "origin": "Vadachi Wadi",
+    "destination": "Hadapsar Gadital"
+  },
+  {
+    "id": "193",
+    "shortName": "193",
+    "longName": "Khutbav Gaon ⇆ Hadapsar Gadital Solapur Road",
+    "origin": "Khutbav Gaon",
+    "destination": "Hadapsar Gadital Solapur Road"
+  },
+  {
+    "id": "195",
+    "shortName": "195",
+    "longName": "Holkarwadi ⇆ Hadapsar Gadital",
+    "origin": "Holkarwadi",
+    "destination": "Hadapsar Gadital"
+  },
+  {
+    "id": "199",
+    "shortName": "199",
+    "longName": "Shewalewadi Depot ⇆ Kothrud Depot",
+    "origin": "Shewalewadi Depot",
+    "destination": "Kothrud Depot"
+  },
+  {
+    "id": "19A",
+    "shortName": "19A",
+    "longName": "Swargate ⇆ Yewalewadi",
+    "origin": "Swargate",
+    "destination": "Yewalewadi"
+  },
+  {
+    "id": "19",
+    "shortName": "19",
+    "longName": "Swargate ⇆ Yewalewadi",
+    "origin": "Swargate",
+    "destination": "Yewalewadi"
+  },
+  {
+    "id": "200",
+    "shortName": "200",
+    "longName": "Alandi ⇆ Shewalewadi Depot",
+    "origin": "Alandi",
+    "destination": "Shewalewadi Depot"
+  },
+  {
+    "id": "201",
+    "shortName": "201",
+    "longName": "Alandi ⇆ Bhekrai Nagar",
+    "origin": "Alandi",
+    "destination": "Bhekrai Nagar"
+  },
+  {
+    "id": "202",
+    "shortName": "202",
+    "longName": "Ganpati Matha ⇆ Shewalewadi Depot",
+    "origin": "Ganpati Matha",
+    "destination": "Shewalewadi Depot"
+  },
+  {
+    "id": "203",
+    "shortName": "203",
+    "longName": "Shewalewadi Depot ⇆ Pune Station Moledina Stand",
+    "origin": "Shewalewadi Depot",
+    "destination": "Pune Station Moledina Stand"
+  },
+  {
+    "id": "204",
+    "shortName": "204",
+    "longName": "Chinchwadgaon ⇆ Bhekrai Nagar",
+    "origin": "Chinchwadgaon",
+    "destination": "Bhekrai Nagar"
+  },
+  {
+    "id": "205",
+    "shortName": "205",
+    "longName": "Sangvi Vasantdada Putala ⇆ Shewalewadi Depot",
+    "origin": "Sangvi Vasantdada Putala",
+    "destination": "Shewalewadi Depot"
+  },
+  {
+    "id": "207A",
+    "shortName": "207A",
+    "longName": "Saswad ⇆ Hadapsar Gadital",
+    "origin": "Saswad",
+    "destination": "Hadapsar Gadital"
+  },
+  {
+    "id": "207",
+    "shortName": "207",
+    "longName": "Saswad ⇆ Swargate",
+    "origin": "Saswad",
+    "destination": "Swargate"
+  },
+  {
+    "id": "208",
+    "shortName": "208",
+    "longName": "Hinjawadi Maan Phase 3 ⇆ Bhekrai Nagar",
+    "origin": "Hinjawadi Maan Phase 3",
+    "destination": "Bhekrai Nagar"
+  },
+  {
+    "id": "209A",
+    "shortName": "209A",
+    "longName": "Saswad ⇆ Swargate",
+    "origin": "Saswad",
+    "destination": "Swargate"
+  },
+  {
+    "id": "209",
+    "shortName": "209",
+    "longName": "Saswad ⇆ Katraj Kondhwa Road",
+    "origin": "Saswad",
+    "destination": "Katraj Kondhwa Road"
+  },
+  {
+    "id": "210",
+    "shortName": "210",
+    "longName": "Midc Jejuri ⇆ Hadapsar Gadital",
+    "origin": "Midc Jejuri",
+    "destination": "Hadapsar Gadital"
+  },
+  {
+    "id": "211",
+    "shortName": "211",
+    "longName": "Uruli Kanchan ⇆ Saswad",
+    "origin": "Uruli Kanchan",
+    "destination": "Saswad"
+  },
+  {
+    "id": "212",
+    "shortName": "212",
+    "longName": "Morgaon St Stand ⇆ Hadapsar Gadital",
+    "origin": "Morgaon St Stand",
+    "destination": "Hadapsar Gadital"
+  },
+  {
+    "id": "213",
+    "shortName": "213",
+    "longName": "Nira ⇆ Hadapsar Gadital",
+    "origin": "Nira",
+    "destination": "Hadapsar Gadital"
+  },
+  {
+    "id": "214",
+    "shortName": "214",
+    "longName": "Shingad Collage Ambegaon ⇆ Katraj",
+    "origin": "Shingad Collage Ambegaon",
+    "destination": "Katraj"
+  },
+  {
+    "id": "215",
+    "shortName": "215",
+    "longName": "Swargate ⇆ Chintamani Dnyanpith",
+    "origin": "Swargate",
+    "destination": "Chintamani Dnyanpith"
+  },
+  {
+    "id": "216",
+    "shortName": "216",
+    "longName": "Shivaji Nagar ⇆ Bharati Vidyapeeth",
+    "origin": "Shivaji Nagar",
+    "destination": "Bharati Vidyapeeth"
+  },
+  {
+    "id": "219",
+    "shortName": "219",
+    "longName": "Alandi ⇆ Kothrud Depot",
+    "origin": "Alandi",
+    "destination": "Kothrud Depot"
+  },
+  {
+    "id": "21",
+    "shortName": "21",
+    "longName": "Sangvi Vasantdada Putala ⇆ Swargate",
+    "origin": "Sangvi Vasantdada Putala",
+    "destination": "Swargate"
+  },
+  {
+    "id": "221",
+    "shortName": "221",
+    "longName": "I V Estate Wagholi ⇆ Wagholi Kesnand Phata",
+    "origin": "I V Estate Wagholi",
+    "destination": "Wagholi Kesnand Phata"
+  },
+  {
+    "id": "225",
+    "shortName": "225",
+    "longName": "Hinjawadi Maan Phase 3 ⇆ Kharadi Gaon",
+    "origin": "Hinjawadi Maan Phase 3",
+    "destination": "Kharadi Gaon"
+  },
+  {
+    "id": "227A",
+    "shortName": "227A",
+    "longName": "Mhasoba Mandir Kharawade ⇆ Marketyard Depot",
+    "origin": "Mhasoba Mandir Kharawade",
+    "destination": "Marketyard Depot"
+  },
+  {
+    "id": "227",
+    "shortName": "227",
+    "longName": "Marnewadi ⇆ Marketyard Depot",
+    "origin": "Marnewadi",
+    "destination": "Marketyard Depot"
+  },
+  {
+    "id": "228",
+    "shortName": "228",
+    "longName": "Vadgaon Mawal ⇆ Katraj",
+    "origin": "Vadgaon Mawal",
+    "destination": "Katraj"
+  },
+  {
+    "id": "231",
+    "shortName": "231",
+    "longName": "Shilim Gaon ⇆ Marketyard Depot",
+    "origin": "Shilim Gaon",
+    "destination": "Marketyard Depot"
+  },
+  {
+    "id": "232",
+    "shortName": "232",
+    "longName": "Gram Panchayat Belawade ⇆ Marketyard Depot",
+    "origin": "Gram Panchayat Belawade",
+    "destination": "Marketyard Depot"
+  },
+  {
+    "id": "233A",
+    "shortName": "233A",
+    "longName": "Kolwan Gaon ⇆ Marketyard Depot",
+    "origin": "Kolwan Gaon",
+    "destination": "Marketyard Depot"
+  },
+  {
+    "id": "233B",
+    "shortName": "233B",
+    "longName": "Bhadasgaon ⇆ Marketyard Depot",
+    "origin": "Bhadasgaon",
+    "destination": "Marketyard Depot"
+  },
+  {
+    "id": "233",
+    "shortName": "233",
+    "longName": "Paud Shashkiy Vishram Gruh ⇆ Marketyard Depot",
+    "origin": "Paud Shashkiy Vishram Gruh",
+    "destination": "Marketyard Depot"
+  },
+  {
+    "id": "234",
+    "shortName": "234",
+    "longName": "Dhole Patil Collage ⇆ Ma Na Pa Shramik Bhavan",
+    "origin": "Dhole Patil Collage",
+    "destination": "Ma Na Pa Shramik Bhavan"
+  },
+  {
+    "id": "235",
+    "shortName": "235",
+    "longName": "Kharadi Gaon ⇆ Katraj",
+    "origin": "Kharadi Gaon",
+    "destination": "Katraj"
+  },
+  {
+    "id": "236",
+    "shortName": "236",
+    "longName": "Kesnand Phata Wagholi ⇆ Katraj",
+    "origin": "Kesnand Phata Wagholi",
+    "destination": "Katraj"
+  },
+  {
+    "id": "24A",
+    "shortName": "24A",
+    "longName": "Lohegaon ⇆ Katraj",
+    "origin": "Lohegaon",
+    "destination": "Katraj"
+  },
+  {
+    "id": "24",
+    "shortName": "24",
+    "longName": "Maharashtra Housing Board Samta Nagar ⇆ Katraj",
+    "origin": "Maharashtra Housing Board Samta Nagar",
+    "destination": "Katraj"
+  },
+  {
+    "id": "256",
+    "shortName": "256",
+    "longName": "Balewadi Depot ⇆ Pune Station Moledina Stand",
+    "origin": "Balewadi Depot",
+    "destination": "Pune Station Moledina Stand"
+  },
+  {
+    "id": "257A",
+    "shortName": "257A",
+    "longName": "Indian Oil Petrol Pump Tulapur ⇆ Wagholi Kesnand Phata",
+    "origin": "Indian Oil Petrol Pump Tulapur",
+    "destination": "Wagholi Kesnand Phata"
+  },
+  {
+    "id": "257",
+    "shortName": "257",
+    "longName": "Alandi ⇆ Panaychi Taki Markal",
+    "origin": "Alandi",
+    "destination": "Panaychi Taki Markal"
+  },
+  {
+    "id": "258",
+    "shortName": "258",
+    "longName": "Nilanjan Society Soosgaon ⇆ Ma Na Pa Main Gate",
+    "origin": "Nilanjan Society Soosgaon",
+    "destination": "Ma Na Pa Main Gate"
+  },
+  {
+    "id": "262",
+    "shortName": "262",
+    "longName": "Sant Tukaram Maharaj Krida Sankul Dehugaon ⇆ Pune Station Moledina Stand",
+    "origin": "Sant Tukaram Maharaj Krida Sankul Dehugaon",
+    "destination": "Pune Station Moledina Stand"
+  },
+  {
+    "id": "264",
+    "shortName": "264",
+    "longName": "Pabal Gaon ⇆ Bhosari Pmt Chowk",
+    "origin": "Pabal Gaon",
+    "destination": "Bhosari Pmt Chowk"
+  },
+  {
+    "id": "26",
+    "shortName": "26",
+    "longName": "Shivaji Nagar ⇆ Dhankawadi",
+    "origin": "Shivaji Nagar",
+    "destination": "Dhankawadi"
+  },
+  {
+    "id": "276",
+    "shortName": "276",
+    "longName": "Chinchwadgaon ⇆ Ganpati Matha",
+    "origin": "Chinchwadgaon",
+    "destination": "Ganpati Matha"
+  },
+  {
+    "id": "277",
+    "shortName": "277",
+    "longName": "Bhosari Terminal ⇆ Kothrud Depot",
+    "origin": "Bhosari Terminal",
+    "destination": "Kothrud Depot"
+  },
+  {
+    "id": "279",
+    "shortName": "279",
+    "longName": "Katar Khadak ⇆ Marketyard Depot",
+    "origin": "Katar Khadak",
+    "destination": "Marketyard Depot"
+  },
+  {
+    "id": "281",
+    "shortName": "281",
+    "longName": "Nigdi Bhakti Shakti ⇆ Ganpati Matha",
+    "origin": "Nigdi Bhakti Shakti",
+    "destination": "Ganpati Matha"
+  },
+  {
+    "id": "282",
+    "shortName": "282",
+    "longName": "Bhosari Terminal ⇆ Ganpati Matha",
+    "origin": "Bhosari Terminal",
+    "destination": "Ganpati Matha"
+  },
+  {
+    "id": "283",
+    "shortName": "283",
+    "longName": "Pune Station Moledina Stand ⇆ Kumbare Park",
+    "origin": "Pune Station Moledina Stand",
+    "destination": "Kumbare Park"
+  },
+  {
+    "id": "290",
+    "shortName": "290",
+    "longName": "Swargate ⇆ Jambhulwadi",
+    "origin": "Swargate",
+    "destination": "Jambhulwadi"
+  },
+  {
+    "id": "291",
+    "shortName": "291",
+    "longName": "Hadapsar Gadital ⇆ Katraj Kondhwa Road",
+    "origin": "Hadapsar Gadital",
+    "destination": "Katraj Kondhwa Road"
+  },
+  {
+    "id": "292",
+    "shortName": "292",
+    "longName": "Kondhanpur ⇆ Balaji Nagar Corner Satara Road",
+    "origin": "Kondhanpur",
+    "destination": "Balaji Nagar Corner Satara Road"
+  },
+  {
+    "id": "293",
+    "shortName": "293",
+    "longName": "Saswad ⇆ Balaji Nagar Corner Satara Road",
+    "origin": "Saswad",
+    "destination": "Balaji Nagar Corner Satara Road"
+  },
+  {
+    "id": "296A",
+    "shortName": "296A",
+    "longName": "Vangniwadi ⇆ Balaji Nagar Corner Satara Road",
+    "origin": "Vangniwadi",
+    "destination": "Balaji Nagar Corner Satara Road"
+  },
+  {
+    "id": "296",
+    "shortName": "296",
+    "longName": "Velhe ⇆ Balaji Nagar Corner Satara Road",
+    "origin": "Velhe",
+    "destination": "Balaji Nagar Corner Satara Road"
+  },
+  {
+    "id": "297",
+    "shortName": "297",
+    "longName": "Shivaji Nagar ⇆ Rajas Society",
+    "origin": "Shivaji Nagar",
+    "destination": "Rajas Society"
+  },
+  {
+    "id": "298",
+    "shortName": "298",
+    "longName": "Chinchwadgaon ⇆ Gujarwadi Pmt Bus Stand",
+    "origin": "Chinchwadgaon",
+    "destination": "Gujarwadi Pmt Bus Stand"
+  },
+  {
+    "id": "299",
+    "shortName": "299",
+    "longName": "Bhosari Terminal ⇆ Gujarwadi Pmt Bus Stand",
+    "origin": "Bhosari Terminal",
+    "destination": "Gujarwadi Pmt Bus Stand"
+  },
+  {
+    "id": "29",
+    "shortName": "29",
+    "longName": "Alandi ⇆ Swargate",
+    "origin": "Alandi",
+    "destination": "Swargate"
+  },
+  {
+    "id": "2A",
+    "shortName": "2A",
+    "longName": "Shivaji Nagar ⇆ Katraj",
+    "origin": "Shivaji Nagar",
+    "destination": "Katraj"
+  },
+  {
+    "id": "2",
+    "shortName": "2",
+    "longName": "Shivaji Nagar ⇆ Swargate",
+    "origin": "Shivaji Nagar",
+    "destination": "Swargate"
+  },
+  {
+    "id": "301A",
+    "shortName": "301A",
+    "longName": "Bhekrai Nagar ⇆ Katraj",
+    "origin": "Bhekrai Nagar",
+    "destination": "Katraj"
+  },
+  {
+    "id": "301",
+    "shortName": "301",
+    "longName": "Shewalewadi Depot ⇆ Katraj",
+    "origin": "Shewalewadi Depot",
+    "destination": "Katraj"
+  },
+  {
+    "id": "302A",
+    "shortName": "302A",
+    "longName": "Alandi ⇆ Pimprigaon",
+    "origin": "Alandi",
+    "destination": "Pimprigaon"
+  },
+  {
+    "id": "302",
+    "shortName": "302",
+    "longName": "Bhosari Gavhane Vasti ⇆ Pimprigaon",
+    "origin": "Bhosari Gavhane Vasti",
+    "destination": "Pimprigaon"
+  },
+  {
+    "id": "303A",
+    "shortName": "303A",
+    "longName": "Gahunjegaon ⇆ Nigdi Pawale Chowk",
+    "origin": "Gahunjegaon",
+    "destination": "Nigdi Pawale Chowk"
+  },
+  {
+    "id": "303",
+    "shortName": "303",
+    "longName": "Akurdi Railway Station ⇆ Nigdi Pawale Chowk",
+    "origin": "Akurdi Railway Station",
+    "destination": "Nigdi Pawale Chowk"
+  },
+  {
+    "id": "304",
+    "shortName": "304",
+    "longName": "Bhosari Gavhane Vasti ⇆ Chinchwadgaon",
+    "origin": "Bhosari Gavhane Vasti",
+    "destination": "Chinchwadgaon"
+  },
+  {
+    "id": "305A",
+    "shortName": "305A",
+    "longName": "Greenbase Industrial Park Navlakh Umbre ⇆ Nigdi Pawale Chowk",
+    "origin": "Greenbase Industrial Park Navlakh Umbre",
+    "destination": "Nigdi Pawale Chowk"
+  },
+  {
+    "id": "305B",
+    "shortName": "305B",
+    "longName": "Mindewadi Navlakh Umbre ⇆ Nigdi Pawale Chowk",
+    "origin": "Mindewadi Navlakh Umbre",
+    "destination": "Nigdi Pawale Chowk"
+  },
+  {
+    "id": "305",
+    "shortName": "305",
+    "longName": "Vadgaon Mawal ⇆ Nigdi Pawale Chowk",
+    "origin": "Vadgaon Mawal",
+    "destination": "Nigdi Pawale Chowk"
+  },
+  {
+    "id": "306A",
+    "shortName": "306A",
+    "longName": "Hinjewadi Hills Dattawadi ⇆ Dange Chowk",
+    "origin": "Hinjewadi Hills Dattawadi",
+    "destination": "Dange Chowk"
+  },
+  {
+    "id": "306",
+    "shortName": "306",
+    "longName": "Megapolis Phase 3 ⇆ Dange Chowk",
+    "origin": "Megapolis Phase 3",
+    "destination": "Dange Chowk"
+  },
+  {
+    "id": "307",
+    "shortName": "307",
+    "longName": "ISKCON Mandir in Shindewasti Ravet ⇆ Chinchwadgaon",
+    "origin": "ISKCON Mandir in Shindewasti Ravet",
+    "destination": "Chinchwadgaon"
+  },
+  {
+    "id": "308",
+    "shortName": "308",
+    "longName": "Gharkul Vasahat Chikhali ⇆ Nigdi Pawale Chowk",
+    "origin": "Gharkul Vasahat Chikhali",
+    "destination": "Nigdi Pawale Chowk"
+  },
+  {
+    "id": "309",
+    "shortName": "309",
+    "longName": "Sant Tukaram Maharaj Krida Sankul Dehugaon ⇆ Alandi",
+    "origin": "Sant Tukaram Maharaj Krida Sankul Dehugaon",
+    "destination": "Alandi"
+  },
+  {
+    "id": "30",
+    "shortName": "30",
+    "longName": "Ghotawade Phata ⇆ Marketyard Depot",
+    "origin": "Ghotawade Phata",
+    "destination": "Marketyard Depot"
+  },
+  {
+    "id": "312",
+    "shortName": "312",
+    "longName": "Chinchwadgaon ⇆ Pune Station Depot",
+    "origin": "Chinchwadgaon",
+    "destination": "Pune Station Depot"
+  },
+  {
+    "id": "313",
+    "shortName": "313",
+    "longName": "Chandkhed ⇆ Chinchwadgaon",
+    "origin": "Chandkhed",
+    "destination": "Chinchwadgaon"
+  },
+  {
+    "id": "314",
+    "shortName": "314",
+    "longName": "Chakan Ambethan Chowk ⇆ Nigdi Pawale Chowk",
+    "origin": "Chakan Ambethan Chowk",
+    "destination": "Nigdi Pawale Chowk"
+  },
+  {
+    "id": "315",
+    "shortName": "315",
+    "longName": "Bhosari Pmt Chowk ⇆ Pune Station Sassoon Road",
+    "origin": "Bhosari Pmt Chowk",
+    "destination": "Pune Station Sassoon Road"
+  },
+  {
+    "id": "316",
+    "shortName": "316",
+    "longName": "Katar Khadak ⇆ Chinchwadgaon",
+    "origin": "Katar Khadak",
+    "destination": "Chinchwadgaon"
+  },
+  {
+    "id": "317",
+    "shortName": "317",
+    "longName": "Sambhaji Nagar ⇆ Pune Station Depot",
+    "origin": "Sambhaji Nagar",
+    "destination": "Pune Station Depot"
+  },
+  {
+    "id": "320",
+    "shortName": "320",
+    "longName": "Hinjawadi Maan Phase 3 ⇆ Chinchwadgaon",
+    "origin": "Hinjawadi Maan Phase 3",
+    "destination": "Chinchwadgaon"
+  },
+  {
+    "id": "322A",
+    "shortName": "322A",
+    "longName": "Akurdi Railway Station ⇆ Ma Na Pa Main Gate",
+    "origin": "Akurdi Railway Station",
+    "destination": "Ma Na Pa Main Gate"
+  },
+  {
+    "id": "322",
+    "shortName": "322",
+    "longName": "Akurdi Railway Station ⇆ Ma Na Pa Main Gate",
+    "origin": "Akurdi Railway Station",
+    "destination": "Ma Na Pa Main Gate"
+  },
+  {
+    "id": "323A",
+    "shortName": "323A",
+    "longName": "Gharkul Vasahat Chikhali ⇆ Ma Na Pa Main Stand",
+    "origin": "Gharkul Vasahat Chikhali",
+    "destination": "Ma Na Pa Main Stand"
+  },
+  {
+    "id": "323",
+    "shortName": "323",
+    "longName": "Nageshwar Vidyalaya Chikhli ⇆ Ma Na Pa Main Stand",
+    "origin": "Nageshwar Vidyalaya Chikhli",
+    "destination": "Ma Na Pa Main Stand"
+  },
+  {
+    "id": "324",
+    "shortName": "324",
+    "longName": "Hinjawadi Maan Phase 3 ⇆ Bhosari Terminal",
+    "origin": "Hinjawadi Maan Phase 3",
+    "destination": "Bhosari Terminal"
+  },
+  {
+    "id": "326",
+    "shortName": "326",
+    "longName": "Nageshwar Vidyalaya Chikhli ⇆ Pimprigaon",
+    "origin": "Nageshwar Vidyalaya Chikhli",
+    "destination": "Pimprigaon"
+  },
+  {
+    "id": "327",
+    "shortName": "327",
+    "longName": "Hinjawadi Maan Phase 3 ⇆ Alandi",
+    "origin": "Hinjawadi Maan Phase 3",
+    "destination": "Alandi"
+  },
+  {
+    "id": "329",
+    "shortName": "329",
+    "longName": "Siddhanta College Sudumbare ⇆ Pimpri Road",
+    "origin": "Siddhanta College Sudumbare",
+    "destination": "Pimpri Road"
+  },
+  {
+    "id": "330",
+    "shortName": "330",
+    "longName": "Talegaon Dhabhade Maruti Mandir ⇆ Sant Tukaram Maharaj Krida Sankul Wadacha Mal Dehugaon",
+    "origin": "Talegaon Dhabhade Maruti Mandir",
+    "destination": "Sant Tukaram Maharaj Krida Sankul Wadacha Mal Dehugaon"
+  },
+  {
+    "id": "331A",
+    "shortName": "331A",
+    "longName": "Pimple Saudagar- Mahadev Mandir / Pimple Saudagar ⇆ Charholigaon Burde Vasti",
+    "origin": "Pimple Saudagar",
+    "destination": "Mahadev Mandir / Pimple Saudagar"
+  },
+  {
+    "id": "331B",
+    "shortName": "331B",
+    "longName": "Pimple Saudagar- Mahadev Mandir / Pimple Saudagar ⇆ Charholigaon",
+    "origin": "Pimple Saudagar",
+    "destination": "Mahadev Mandir / Pimple Saudagar"
+  },
+  {
+    "id": "331",
+    "shortName": "331",
+    "longName": "Pimple Saudagar- Mahadev Mandir / Pimple Saudagar ⇆ Bhosari Gavhane Vasti",
+    "origin": "Pimple Saudagar",
+    "destination": "Mahadev Mandir / Pimple Saudagar"
+  },
+  {
+    "id": "332",
+    "shortName": "332",
+    "longName": "Tata Motors Bebadohal ⇆ Nigdi Pawale Chowk",
+    "origin": "Tata Motors Bebadohal",
+    "destination": "Nigdi Pawale Chowk"
+  },
+  {
+    "id": "333",
+    "shortName": "333",
+    "longName": "Hinjawadi Maan Phase 3 ⇆ Pune Station Moledina Stand",
+    "origin": "Hinjawadi Maan Phase 3",
+    "destination": "Pune Station Moledina Stand"
+  },
+  {
+    "id": "334",
+    "shortName": "334",
+    "longName": "Gharkul Vasahat Chikhali ⇆ Pimprigaon",
+    "origin": "Gharkul Vasahat Chikhali",
+    "destination": "Pimprigaon"
+  },
+  {
+    "id": "336",
+    "shortName": "336",
+    "longName": "Nigdi Bhakti Shakti ⇆ Kesnand Phata Wagholi",
+    "origin": "Nigdi Bhakti Shakti",
+    "destination": "Kesnand Phata Wagholi"
+  },
+  {
+    "id": "337",
+    "shortName": "337",
+    "longName": "Dsk Vishwa ⇆ Nigdi Bhakti Shakti Stand",
+    "origin": "Dsk Vishwa",
+    "destination": "Nigdi Bhakti Shakti Stand"
+  },
+  {
+    "id": "339",
+    "shortName": "339",
+    "longName": "Sant Nagar Rto Office ⇆ Gujarwadi Pmt Bus Stand",
+    "origin": "Sant Nagar Rto Office",
+    "destination": "Gujarwadi Pmt Bus Stand"
+  },
+  {
+    "id": "340",
+    "shortName": "340",
+    "longName": "Alandi ⇆ Nigdi Pawale Chowk",
+    "origin": "Alandi",
+    "destination": "Nigdi Pawale Chowk"
+  },
+  {
+    "id": "341",
+    "shortName": "341",
+    "longName": "Urse Gaon Vasudev Aashram ⇆ Nigdi Pawale Chowk",
+    "origin": "Urse Gaon Vasudev Aashram",
+    "destination": "Nigdi Pawale Chowk"
+  },
+  {
+    "id": "342",
+    "shortName": "342",
+    "longName": "Vasudev Aashram Ursegaon ⇆ Nigdi Pawale Chowk",
+    "origin": "Vasudev Aashram Ursegaon",
+    "destination": "Nigdi Pawale Chowk"
+  },
+  {
+    "id": "343",
+    "shortName": "343",
+    "longName": "Talegaon Dhabhade Maruti Mandir ⇆ Chakan Ambethan Chowk",
+    "origin": "Talegaon Dhabhade Maruti Mandir",
+    "destination": "Chakan Ambethan Chowk"
+  },
+  {
+    "id": "344",
+    "shortName": "344",
+    "longName": "Baner Depot ⇆ Alandi",
+    "origin": "Baner Depot",
+    "destination": "Alandi"
+  },
+  {
+    "id": "345",
+    "shortName": "345",
+    "longName": "Hinjawadi Maan Phase 3 ⇆ Bhosari Terminal",
+    "origin": "Hinjawadi Maan Phase 3",
+    "destination": "Bhosari Terminal"
+  },
+  {
+    "id": "346",
+    "shortName": "346",
+    "longName": "Bhosari Pmt Chowk ⇆ Kesnand Phata Wagholi",
+    "origin": "Bhosari Pmt Chowk",
+    "destination": "Kesnand Phata Wagholi"
+  },
+  {
+    "id": "348",
+    "shortName": "348",
+    "longName": "Nigdi Bhakti Shakti ⇆ Pune Station Moledina Stand",
+    "origin": "Nigdi Bhakti Shakti",
+    "destination": "Pune Station Moledina Stand"
+  },
+  {
+    "id": "34",
+    "shortName": "34",
+    "longName": "Nigdi Pawale Chowk ⇆ Aundhgaon",
+    "origin": "Nigdi Pawale Chowk",
+    "destination": "Aundhgaon"
+  },
+  {
+    "id": "350",
+    "shortName": "350",
+    "longName": "Sant Tukaram Maharaj Krida Sankul Dehugaon ⇆ Nigdi Tilak Chowk",
+    "origin": "Sant Tukaram Maharaj Krida Sankul Dehugaon",
+    "destination": "Nigdi Tilak Chowk"
+  },
+  {
+    "id": "351",
+    "shortName": "351",
+    "longName": "Jambe ⇆ Alandi",
+    "origin": "Jambe",
+    "destination": "Alandi"
+  },
+  {
+    "id": "352",
+    "shortName": "352",
+    "longName": "Rajguru Nagar Low Collage ⇆ Pune Station Sassoon Road",
+    "origin": "Rajguru Nagar Low Collage",
+    "destination": "Pune Station Sassoon Road"
+  },
+  {
+    "id": "353",
+    "shortName": "353",
+    "longName": "Shikrapur Phata ⇆ Chakan Ambethan Chowk",
+    "origin": "Shikrapur Phata",
+    "destination": "Chakan Ambethan Chowk"
+  },
+  {
+    "id": "354",
+    "shortName": "354",
+    "longName": "Pimprigaon ⇆ Marketyard Depot",
+    "origin": "Pimprigaon",
+    "destination": "Marketyard Depot"
+  },
+  {
+    "id": "355A",
+    "shortName": "355A",
+    "longName": "Nageshwar Vidyalaya Chikhli ⇆ Radha Hotel",
+    "origin": "Nageshwar Vidyalaya Chikhli",
+    "destination": "Radha Hotel"
+  },
+  {
+    "id": "355",
+    "shortName": "355",
+    "longName": "Nageshwar Vidyalaya Chikhli ⇆ Radha Hotel",
+    "origin": "Nageshwar Vidyalaya Chikhli",
+    "destination": "Radha Hotel"
+  },
+  {
+    "id": "355M",
+    "shortName": "355M",
+    "longName": "Nageshwar Vidyalaya Chikhli ⇆ Dange Chowk",
+    "origin": "Nageshwar Vidyalaya Chikhli",
+    "destination": "Dange Chowk"
+  },
+  {
+    "id": "356",
+    "shortName": "356",
+    "longName": "Sector no. 12 PM Awas Yojana Bhosari ⇆ Nashik Phata Metro Station",
+    "origin": "Sector no. 12 PM Awas Yojana Bhosari",
+    "destination": "Nashik Phata Metro Station"
+  },
+  {
+    "id": "357",
+    "shortName": "357",
+    "longName": "Bhosari Terminal ⇆ Pune Station Sassoon Road",
+    "origin": "Bhosari Terminal",
+    "destination": "Pune Station Sassoon Road"
+  },
+  {
+    "id": "358A",
+    "shortName": "358A",
+    "longName": "Bhamchandra Vidhyalay Vasuli ⇆ Bhosari Chakan Road",
+    "origin": "Bhamchandra Vidhyalay Vasuli",
+    "destination": "Bhosari Chakan Road"
+  },
+  {
+    "id": "358",
+    "shortName": "358",
+    "longName": "Rajguru Nagar Low Collage ⇆ Bhosari Chakan Road",
+    "origin": "Rajguru Nagar Low Collage",
+    "destination": "Bhosari Chakan Road"
+  },
+  {
+    "id": "359A",
+    "shortName": "359A",
+    "longName": "Rajguru Nagar Low Collage ⇆ Pimplegurav",
+    "origin": "Rajguru Nagar Low Collage",
+    "destination": "Pimplegurav"
+  },
+  {
+    "id": "35",
+    "shortName": "35",
+    "longName": "Mukai Chowk ⇆ Ma Na Pa Dengle Pul Nadikathi",
+    "origin": "Mukai Chowk",
+    "destination": "Ma Na Pa Dengle Pul Nadikathi"
+  },
+  {
+    "id": "360A",
+    "shortName": "360A",
+    "longName": "Aundhgaon ⇆ Alandi",
+    "origin": "Aundhgaon",
+    "destination": "Alandi"
+  },
+  {
+    "id": "360",
+    "shortName": "360",
+    "longName": "Bajirao Padale Chowk Mhalunge ⇆ Alandi",
+    "origin": "Bajirao Padale Chowk Mhalunge",
+    "destination": "Alandi"
+  },
+  {
+    "id": "361",
+    "shortName": "361",
+    "longName": "Bhosari Pmt Chowk ⇆ Alandi",
+    "origin": "Bhosari Pmt Chowk",
+    "destination": "Alandi"
+  },
+  {
+    "id": "362",
+    "shortName": "362",
+    "longName": "Ycm Hospital ⇆ Alandi",
+    "origin": "Ycm Hospital",
+    "destination": "Alandi"
+  },
+  {
+    "id": "363",
+    "shortName": "363",
+    "longName": "Samir Lawns Ravet ⇆ Pimpri Road",
+    "origin": "Samir Lawns Ravet",
+    "destination": "Pimpri Road"
+  },
+  {
+    "id": "364",
+    "shortName": "364",
+    "longName": "Chakan Ambethan Chowk ⇆ Alandi",
+    "origin": "Chakan Ambethan Chowk",
+    "destination": "Alandi"
+  },
+  {
+    "id": "366",
+    "shortName": "366",
+    "longName": "Nigdi Bhakti Shakti ⇆ Pune Station Depot",
+    "origin": "Nigdi Bhakti Shakti",
+    "destination": "Pune Station Depot"
+  },
+  {
+    "id": "367",
+    "shortName": "367",
+    "longName": "Mukai Chowk ⇆ Bhosari Gavhane Vasti",
+    "origin": "Mukai Chowk",
+    "destination": "Bhosari Gavhane Vasti"
+  },
+  {
+    "id": "367M",
+    "shortName": "367M",
+    "longName": "Mukai Chowk ⇆ Bhosari Gavhane Vasti",
+    "origin": "Mukai Chowk",
+    "destination": "Bhosari Gavhane Vasti"
+  },
+  {
+    "id": "368",
+    "shortName": "368",
+    "longName": "Lonavala Railway Station ⇆ Nigdi Pawale Chowk",
+    "origin": "Lonavala Railway Station",
+    "destination": "Nigdi Pawale Chowk"
+  },
+  {
+    "id": "369",
+    "shortName": "369",
+    "longName": "Bhamchandra Vidhyalay Vasuli ⇆ Nigdi Tilak Chowk",
+    "origin": "Bhamchandra Vidhyalay Vasuli",
+    "destination": "Nigdi Tilak Chowk"
+  },
+  {
+    "id": "370",
+    "shortName": "370",
+    "longName": "Davdigaon ⇆ Bhosari Chakan Road",
+    "origin": "Davdigaon",
+    "destination": "Bhosari Chakan Road"
+  },
+  {
+    "id": "371",
+    "shortName": "371",
+    "longName": "Takve Bhoyregaon ⇆ Nigdi Pawale Chowk",
+    "origin": "Takve Bhoyregaon",
+    "destination": "Nigdi Pawale Chowk"
+  },
+  {
+    "id": "372",
+    "shortName": "372",
+    "longName": "Megapolis Phase 3 ⇆ Nigdi Bhakti Shakti Stand",
+    "origin": "Megapolis Phase 3",
+    "destination": "Nigdi Bhakti Shakti Stand"
+  },
+  {
+    "id": "372M",
+    "shortName": "372M",
+    "longName": "Megapolis Phase 3 ⇆ Nigdi Bhakti Shakti Stand",
+    "origin": "Megapolis Phase 3",
+    "destination": "Nigdi Bhakti Shakti Stand"
+  },
+  {
+    "id": "373",
+    "shortName": "373",
+    "longName": "Neilsoft Company infosys Phase 3 ⇆ Sangvi Vasantdada Putala",
+    "origin": "Neilsoft Company infosys Phase 3",
+    "destination": "Sangvi Vasantdada Putala"
+  },
+  {
+    "id": "374A",
+    "shortName": "374A",
+    "longName": "Gahunjegaon ⇆ Nigdi Pawale Chowk",
+    "origin": "Gahunjegaon",
+    "destination": "Nigdi Pawale Chowk"
+  },
+  {
+    "id": "374",
+    "shortName": "374",
+    "longName": "Virbaba Chowk Sai Nagar ⇆ Nigdi Pawale Chowk",
+    "origin": "Virbaba Chowk Sai Nagar",
+    "destination": "Nigdi Pawale Chowk"
+  },
+  {
+    "id": "375",
+    "shortName": "375",
+    "longName": "Neilsoft Company infosys Phase 3 ⇆ Nigdi Pawale Chowk",
+    "origin": "Neilsoft Company infosys Phase 3",
+    "destination": "Nigdi Pawale Chowk"
+  },
+  {
+    "id": "376",
+    "shortName": "376",
+    "longName": "Pimprigaon ⇆ Ma Na Pa Main Stand",
+    "origin": "Pimprigaon",
+    "destination": "Ma Na Pa Main Stand"
+  },
+  {
+    "id": "37",
+    "shortName": "37",
+    "longName": "Wakdewadi Navin ST Stand ⇆ Sahakar Nagar",
+    "origin": "Wakdewadi Navin ST Stand",
+    "destination": "Sahakar Nagar"
+  },
+  {
+    "id": "380",
+    "shortName": "380",
+    "longName": "Hinjawadi Maan Phase 3 ⇆ Bhosari Terminal",
+    "origin": "Hinjawadi Maan Phase 3",
+    "destination": "Bhosari Terminal"
+  },
+  {
+    "id": "381",
+    "shortName": "381",
+    "longName": "Megapolis Phase 3 ⇆ Nageshwar Vidyalaya Chikhli",
+    "origin": "Megapolis Phase 3",
+    "destination": "Nageshwar Vidyalaya Chikhli"
+  },
+  {
+    "id": "38",
+    "shortName": "38",
+    "longName": "Na Ta Wadi ⇆ Dhankawadi",
+    "origin": "Na Ta Wadi",
+    "destination": "Dhankawadi"
+  },
+  {
+    "id": "39",
+    "shortName": "39",
+    "longName": "Pune Station Jayprakash Stand ⇆ Dhankawadi",
+    "origin": "Pune Station Jayprakash Stand",
+    "destination": "Dhankawadi"
+  },
+  {
+    "id": "41",
+    "shortName": "41",
+    "longName": "Sangvi Vasantdada Putala ⇆ Upper Depot",
+    "origin": "Sangvi Vasantdada Putala",
+    "destination": "Upper Depot"
+  },
+  {
+    "id": "42",
+    "shortName": "42",
+    "longName": "Nigdi Bhakti Shakti ⇆ Gujarwadi Pmt Bus Stand",
+    "origin": "Nigdi Bhakti Shakti",
+    "destination": "Gujarwadi Pmt Bus Stand"
+  },
+  {
+    "id": "43A",
+    "shortName": "43A",
+    "longName": "Hinjawadi Maan Phase 3 ⇆ Katraj",
+    "origin": "Hinjawadi Maan Phase 3",
+    "destination": "Katraj"
+  },
+  {
+    "id": "43",
+    "shortName": "43",
+    "longName": "Nigdi Bhakti Shakti Stand ⇆ Katraj",
+    "origin": "Nigdi Bhakti Shakti Stand",
+    "destination": "Katraj"
+  },
+  {
+    "id": "44",
+    "shortName": "44",
+    "longName": "Akurdi Railway Station ⇆ Katraj",
+    "origin": "Akurdi Railway Station",
+    "destination": "Katraj"
+  },
+  {
+    "id": "47",
+    "shortName": "47",
+    "longName": "Sanaswadi Nandoshi ⇆ Swargate",
+    "origin": "Sanaswadi Nandoshi",
+    "destination": "Swargate"
+  },
+  {
+    "id": "4",
+    "shortName": "4",
+    "longName": "Shivaji Nagar ⇆ Swargate",
+    "origin": "Shivaji Nagar",
+    "destination": "Swargate"
+  },
+  {
+    "id": "50",
+    "shortName": "50",
+    "longName": "Sinhgad ⇆ Shaniwarwada Stand",
+    "origin": "Sinhgad",
+    "destination": "Shaniwarwada Stand"
+  },
+  {
+    "id": "51",
+    "shortName": "51",
+    "longName": "Dsk Vishwa ⇆ Shivaji Nagar",
+    "origin": "Dsk Vishwa",
+    "destination": "Shivaji Nagar"
+  },
+  {
+    "id": "52A",
+    "shortName": "52A",
+    "longName": "Varasgaon Goradwadi ⇆ Swargate",
+    "origin": "Varasgaon Goradwadi",
+    "destination": "Swargate"
+  },
+  {
+    "id": "52",
+    "shortName": "52",
+    "longName": "Khanapur ⇆ Swargate",
+    "origin": "Khanapur",
+    "destination": "Swargate"
+  },
+  {
+    "id": "55",
+    "shortName": "55",
+    "longName": "Shanipar Stand ⇆ Suncity",
+    "origin": "Shanipar Stand",
+    "destination": "Suncity"
+  },
+  {
+    "id": "57",
+    "shortName": "57",
+    "longName": "Vadgaon Budruk Stand ⇆ Pune Station Jayprakash Stand",
+    "origin": "Vadgaon Budruk Stand",
+    "destination": "Pune Station Jayprakash Stand"
+  },
+  {
+    "id": "58",
+    "shortName": "58",
+    "longName": "Gokhale Nagar Police Line ⇆ Shanipar Stand",
+    "origin": "Gokhale Nagar Police Line",
+    "destination": "Shanipar Stand"
+  },
+  {
+    "id": "59",
+    "shortName": "59",
+    "longName": "Niljyoti Society ⇆ Shanipar Stand",
+    "origin": "Niljyoti Society",
+    "destination": "Shanipar Stand"
+  },
+  {
+    "id": "5",
+    "shortName": "5",
+    "longName": "Pune Station Moledina Stand ⇆ Swargate",
+    "origin": "Pune Station Moledina Stand",
+    "destination": "Swargate"
+  },
+  {
+    "id": "60",
+    "shortName": "60",
+    "longName": "Ghule Nagar Vadgaon Budruk ⇆ Swargate",
+    "origin": "Ghule Nagar Vadgaon Budruk",
+    "destination": "Swargate"
+  },
+  {
+    "id": "61",
+    "shortName": "61",
+    "longName": "Sarola ⇆ Balaji Nagar Corner Satara Road",
+    "origin": "Sarola",
+    "destination": "Balaji Nagar Corner Satara Road"
+  },
+  {
+    "id": "64",
+    "shortName": "64",
+    "longName": "Nda 10 No. Gate ⇆ Bhekrai Nagar",
+    "origin": "Nda 10 No. Gate",
+    "destination": "Bhekrai Nagar"
+  },
+  {
+    "id": "64M",
+    "shortName": "64M",
+    "longName": "Ganpati Matha ⇆ Hadapsar Gadital",
+    "origin": "Ganpati Matha",
+    "destination": "Hadapsar Gadital"
+  },
+  {
+    "id": "65A",
+    "shortName": "65A",
+    "longName": "Patas ⇆ Hadapsar Gadital Solapur Road",
+    "origin": "Patas",
+    "destination": "Hadapsar Gadital Solapur Road"
+  },
+  {
+    "id": "66",
+    "shortName": "66",
+    "longName": "Thakarwadi ⇆ Marketyard Depot",
+    "origin": "Thakarwadi",
+    "destination": "Marketyard Depot"
+  },
+  {
+    "id": "67A",
+    "shortName": "67A",
+    "longName": "Uruli Kanchan ⇆ Swargate",
+    "origin": "Uruli Kanchan",
+    "destination": "Swargate"
+  },
+  {
+    "id": "67",
+    "shortName": "67",
+    "longName": "Uruli Kanchan ⇆ Hadapsar Gadital Solapur Road",
+    "origin": "Uruli Kanchan",
+    "destination": "Hadapsar Gadital Solapur Road"
+  },
+  {
+    "id": "68",
+    "shortName": "68",
+    "longName": "Upper Depot ⇆ Sutardara",
+    "origin": "Upper Depot",
+    "destination": "Sutardara"
+  },
+  {
+    "id": "69",
+    "shortName": "69",
+    "longName": "Ghotawadegaon ⇆ Marketyard Depot",
+    "origin": "Ghotawadegaon",
+    "destination": "Marketyard Depot"
+  },
+  {
+    "id": "70",
+    "shortName": "70",
+    "longName": "Mulshi Gaon ⇆ Marketyard Depot",
+    "origin": "Mulshi Gaon",
+    "destination": "Marketyard Depot"
+  },
+  {
+    "id": "72",
+    "shortName": "72",
+    "longName": "Nda 10 No. Gate ⇆ Sukhsagar Nagar",
+    "origin": "Nda 10 No. Gate",
+    "destination": "Sukhsagar Nagar"
+  },
+  {
+    "id": "73",
+    "shortName": "73",
+    "longName": "Gada Modi Chowk Khamgaon ⇆ Hadapsar Gadital Solapur Road",
+    "origin": "Gada Modi Chowk Khamgaon",
+    "destination": "Hadapsar Gadital Solapur Road"
+  },
+  {
+    "id": "74",
+    "shortName": "74",
+    "longName": "Paud Shashkiy Vishram Gruh ⇆ Chinchwadgaon",
+    "origin": "Paud Shashkiy Vishram Gruh",
+    "destination": "Chinchwadgaon"
+  },
+  {
+    "id": "77",
+    "shortName": "77",
+    "longName": "Hinjawadi Maan Phase 3 ⇆ Ganpati Matha",
+    "origin": "Hinjawadi Maan Phase 3",
+    "destination": "Ganpati Matha"
+  },
+  {
+    "id": "78",
+    "shortName": "78",
+    "longName": "Nda 10 No. Gate ⇆ Marketyard Depot",
+    "origin": "Nda 10 No. Gate",
+    "destination": "Marketyard Depot"
+  },
+  {
+    "id": "81",
+    "shortName": "81",
+    "longName": "Pune Station Moledina Stand ⇆ Kumbare Park",
+    "origin": "Pune Station Moledina Stand",
+    "destination": "Kumbare Park"
+  },
+  {
+    "id": "83",
+    "shortName": "83",
+    "longName": "Alandi ⇆ Nda 10 No. Gate",
+    "origin": "Alandi",
+    "destination": "Nda 10 No. Gate"
+  },
+  {
+    "id": "84A",
+    "shortName": "84A",
+    "longName": "Sangrun ⇆ Deccan Gymkhana",
+    "origin": "Sangrun",
+    "destination": "Deccan Gymkhana"
+  },
+  {
+    "id": "84",
+    "shortName": "84",
+    "longName": "Mutha Gaon ⇆ Deccan Gymkhana",
+    "origin": "Mutha Gaon",
+    "destination": "Deccan Gymkhana"
+  },
+  {
+    "id": "85",
+    "shortName": "85",
+    "longName": "Khadewadi ⇆ Ma Na Pa Congress Bhavan",
+    "origin": "Khadewadi",
+    "destination": "Ma Na Pa Congress Bhavan"
+  },
+  {
+    "id": "86",
+    "shortName": "86",
+    "longName": "Paud St Stand ⇆ Deccan Gymkhana",
+    "origin": "Paud St Stand",
+    "destination": "Deccan Gymkhana"
+  },
+  {
+    "id": "87A",
+    "shortName": "87A",
+    "longName": "Zilla Parishad School Chande ⇆ Deccan Gymkhana",
+    "origin": "Zilla Parishad School Chande",
+    "destination": "Deccan Gymkhana"
+  },
+  {
+    "id": "87",
+    "shortName": "87",
+    "longName": "Sutarwadi Depot ⇆ Deccan Gymkhana",
+    "origin": "Sutarwadi Depot",
+    "destination": "Deccan Gymkhana"
+  },
+  {
+    "id": "90",
+    "shortName": "90",
+    "longName": "Gokhale Nagar Police Line ⇆ Katraj",
+    "origin": "Gokhale Nagar Police Line",
+    "destination": "Katraj"
+  },
+  {
+    "id": "94",
+    "shortName": "94",
+    "longName": "Pune Station Moledina Stand ⇆ Matalwadi Bhugaon",
+    "origin": "Pune Station Moledina Stand",
+    "destination": "Matalwadi Bhugaon"
+  },
+  {
+    "id": "95",
+    "shortName": "95",
+    "longName": "PVPIT College Bawdhan ⇆ Deccan Gymkhana",
+    "origin": "PVPIT College Bawdhan",
+    "destination": "Deccan Gymkhana"
+  },
+  {
+    "id": "97",
+    "shortName": "97",
+    "longName": "Sahakar Nagar ⇆ Ganpati Matha",
+    "origin": "Sahakar Nagar",
+    "destination": "Ganpati Matha"
+  },
+  {
+    "id": "98",
+    "shortName": "98",
+    "longName": "Kesnand Phata Wagholi ⇆ Ganpati Matha",
+    "origin": "Kesnand Phata Wagholi",
+    "destination": "Ganpati Matha"
+  },
+  {
+    "id": "99",
+    "shortName": "99",
+    "longName": "Kekan Gas ⇆ Kothrud Depot",
+    "origin": "Kekan Gas",
+    "destination": "Kothrud Depot"
+  },
+  {
+    "id": "AP2",
+    "shortName": "AP2",
+    "longName": "Upper Depot ⇆ Katraj Kondhwa Road",
+    "origin": "Upper Depot",
+    "destination": "Katraj Kondhwa Road"
+  },
+  {
+    "id": "B2",
+    "shortName": "B2",
+    "longName": "DY Patil College Charholi ⇆ Alandi",
+    "origin": "DY Patil College Charholi",
+    "destination": "Alandi"
+  },
+  {
+    "id": "H11",
+    "shortName": "H11",
+    "longName": "Sanket Vihar Lane No 18 ⇆ Hadapsar Gadital",
+    "origin": "Sanket Vihar Lane No 18",
+    "destination": "Hadapsar Gadital"
+  },
+  {
+    "id": "H3",
+    "shortName": "H3",
+    "longName": "Saswad Road Railway Station ⇆ Mantri Market Hadapsar",
+    "origin": "Saswad Road Railway Station",
+    "destination": "Mantri Market Hadapsar"
+  },
+  {
+    "id": "H8",
+    "shortName": "H8",
+    "longName": "Fursungi ⇆ Hadapsar Gadital",
+    "origin": "Fursungi",
+    "destination": "Hadapsar Gadital"
+  },
+  {
+    "id": "H9",
+    "shortName": "H9",
+    "longName": "Manjari Budruk ⇆ Hadapsar Gadital Solapur Road",
+    "origin": "Manjari Budruk",
+    "destination": "Hadapsar Gadital Solapur Road"
+  },
+  {
+    "id": "K11",
+    "shortName": "K11",
+    "longName": "Katraj ⇆ Jambhulwadi",
+    "origin": "Katraj",
+    "destination": "Jambhulwadi"
+  },
+  {
+    "id": "K12A",
+    "shortName": "K12A",
+    "longName": "Katraj ⇆ Nandanvan City Narhe",
+    "origin": "Katraj",
+    "destination": "Nandanvan City Narhe"
+  },
+  {
+    "id": "K12",
+    "shortName": "K12",
+    "longName": "Katraj ⇆ Abhinav Collage Narhe",
+    "origin": "Katraj",
+    "destination": "Abhinav Collage Narhe"
+  },
+  {
+    "id": "K14",
+    "shortName": "K14",
+    "longName": "Gujarwadi ⇆ Katraj",
+    "origin": "Gujarwadi",
+    "destination": "Katraj"
+  },
+  {
+    "id": "K16",
+    "shortName": "K16",
+    "longName": "Yewalewadi ⇆ Katraj",
+    "origin": "Yewalewadi",
+    "destination": "Katraj"
+  },
+  {
+    "id": "K18",
+    "shortName": "K18",
+    "longName": "Katraj ⇆ Waghjai Nagar Shivaji Chowk",
+    "origin": "Katraj",
+    "destination": "Waghjai Nagar Shivaji Chowk"
+  },
+  {
+    "id": "K7",
+    "shortName": "K7",
+    "longName": "Sneha Vihar Dangat Patil Nagar ⇆ Deccan Gymkhana",
+    "origin": "Sneha Vihar Dangat Patil Nagar",
+    "destination": "Deccan Gymkhana"
+  },
+  {
+    "id": "METRO SHUTTLE 13",
+    "shortName": "METRO SHUTTLE 13",
+    "longName": "Swargate ⇆ Upper Depot",
+    "origin": "Swargate",
+    "destination": "Upper Depot"
+  },
+  {
+    "id": "METRO SHUTTLE 17",
+    "shortName": "METRO SHUTTLE 17",
+    "longName": "Shivaji Nagar Civil Court Metro Station ⇆ Hadapsar Gadital",
+    "origin": "Shivaji Nagar Civil Court Metro Station",
+    "destination": "Hadapsar Gadital"
+  },
+  {
+    "id": "METRO SHUTTLE 2",
+    "shortName": "METRO SHUTTLE 2",
+    "longName": "Ganpati Matha ⇆ Deccan Gymkhana",
+    "origin": "Ganpati Matha",
+    "destination": "Deccan Gymkhana"
+  },
+  {
+    "id": "METRO SHUTTLE 31",
+    "shortName": "METRO SHUTTLE 31",
+    "longName": "Kalewadi Phata ⇆ Pimpri Chowk Metro Station",
+    "origin": "Kalewadi Phata",
+    "destination": "Pimpri Chowk Metro Station"
+  },
+  {
+    "id": "METRO SHUTTLE 32",
+    "shortName": "METRO SHUTTLE 32",
+    "longName": "Nigdi Bhakti Shakti ⇆ Nashik Phata",
+    "origin": "Nigdi Bhakti Shakti",
+    "destination": "Nashik Phata"
+  },
+  {
+    "id": "N15",
+    "shortName": "N15",
+    "longName": "Rupee Nagar ⇆ Nigdi Pawale Chowk",
+    "origin": "Rupee Nagar",
+    "destination": "Nigdi Pawale Chowk"
+  },
+  {
+    "id": "N16",
+    "shortName": "N16",
+    "longName": "Nageshwar Vidyalaya Chikhli ⇆ Akurdi Khandoba Maal",
+    "origin": "Nageshwar Vidyalaya Chikhli",
+    "destination": "Akurdi Khandoba Maal"
+  },
+  {
+    "id": "P13",
+    "shortName": "P13",
+    "longName": "Walhekarwadi ⇆ Pimpri Chowk Metro Station",
+    "origin": "Walhekarwadi",
+    "destination": "Pimpri Chowk Metro Station"
+  },
+  {
+    "id": "RATRANI 1",
+    "shortName": "RATRANI 1",
+    "longName": "Mariaai Gate Navin St Stand ⇆ Katraj",
+    "origin": "Mariaai Gate Navin St Stand",
+    "destination": "Katraj"
+  },
+  {
+    "id": "RATRANI 2",
+    "shortName": "RATRANI 2",
+    "longName": "Pune Station Moledina Stand ⇆ Katraj",
+    "origin": "Pune Station Moledina Stand",
+    "destination": "Katraj"
+  },
+  {
+    "id": "RATRANI 3",
+    "shortName": "RATRANI 3",
+    "longName": "Hadapsar Gadital ⇆ Swargate",
+    "origin": "Hadapsar Gadital",
+    "destination": "Swargate"
+  },
+  {
+    "id": "RATRANI 4",
+    "shortName": "RATRANI 4",
+    "longName": "Pune Station St. Helena'S Stand ⇆ Hadapsar Gadital",
+    "origin": "Pune Station St. Helena'S Stand",
+    "destination": "Hadapsar Gadital"
+  },
+  {
+    "id": "RATRANI 7",
+    "shortName": "RATRANI 7",
+    "longName": "Nda 10 No. Gate ⇆ Pune Station Moledina Stand",
+    "origin": "Nda 10 No. Gate",
+    "destination": "Pune Station Moledina Stand"
+  }
+]

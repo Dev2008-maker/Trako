@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { AlertCircle, Bus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { MapView } from "@/components/map/MapView";
@@ -22,6 +22,8 @@ import {
   type Stop,
 } from "@/lib/transit";
 import { formatWalk, isInsidePune, PUNE_CENTER } from "@/lib/geo";
+import { getRouteJourney, findRoutesConnecting, type GtfsJourney } from "@/lib/gtfs";
+import { calcBearing } from "@/lib/demoBuses";
 import type { BusMarkerData } from "@/components/map/types";
 
 export const Route = createFileRoute("/")({
@@ -52,6 +54,10 @@ function Home() {
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 
+  const [selectedJourney, setSelectedJourney] = useState<GtfsJourney | null>(null);
+  const [currentStopIndex, setCurrentStopIndex] = useState(0);
+  const [isRideActive, setIsRideActive] = useState(false);
+
   const origin = coords ?? null;
   const isOutsidePune = Boolean(coords && !isInsidePune(coords));
   const near = useMemo(() => nearestStops(stops, origin, 5), [stops, origin]);
@@ -67,6 +73,61 @@ function Home() {
 
   const topMatch = matches[0];
   const { data: routeDetail } = useQuery(routeDetailQuery(topMatch?.route.id));
+
+  // Resolve GTFS journey when destination changes
+  useEffect(() => {
+    if (!destination) {
+      setSelectedJourney(null);
+      setCurrentStopIndex(0);
+      setIsRideActive(false);
+      return;
+    }
+
+    if (destination.routeId) {
+      const j = getRouteJourney(destination.routeId);
+      if (j) {
+        setSelectedJourney(j);
+        setCurrentStopIndex(0);
+        setIsRideActive(false);
+        return;
+      }
+    }
+
+    // Check if connecting routes match (e.g. Pune Station to Shivajinagar)
+    const connect = findRoutesConnecting("Pune Station", destination.name);
+    if (connect.length > 0 && connect[0]) {
+      setSelectedJourney(connect[0]);
+      setCurrentStopIndex(0);
+      setIsRideActive(false);
+      return;
+    }
+
+    // Check if topMatch route has a GTFS journey
+    if (topMatch?.route?.route_no) {
+      const j = getRouteJourney(topMatch.route.route_no);
+      if (j) {
+        setSelectedJourney(j);
+        setCurrentStopIndex(0);
+        setIsRideActive(false);
+        return;
+      }
+    }
+  }, [destination, topMatch?.route?.route_no]);
+
+  // Live stop-by-stop ride progression when ride is started
+  useEffect(() => {
+    if (!isRideActive || !selectedJourney) return;
+    const interval = setInterval(() => {
+      setCurrentStopIndex((prev) => {
+        if (prev < selectedJourney.stops.length - 1) {
+          return prev + 1;
+        }
+        return prev;
+      });
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [isRideActive, selectedJourney]);
 
   // Route shape line
   const routeLine = useMemo<[number, number][] | undefined>(() => {
@@ -86,6 +147,46 @@ function Home() {
     return undefined;
   }, [destination, routeDetail, topMatch, origin, stops]);
 
+  // Calculate remaining line (light blue) and travelled line (muted grey/blue)
+  const { travelledLine, remainingLine, currentBusPosition, currentBusHeading } = useMemo(() => {
+    if (!selectedJourney) {
+      return { travelledLine: undefined, remainingLine: routeLine, currentBusPosition: null, currentBusHeading: 0 };
+    }
+
+    const jStops = selectedJourney.stops;
+    const shape = selectedJourney.shape;
+    const curStop = jStops[currentStopIndex] ?? jStops[0];
+    if (!curStop || shape.length === 0) {
+      return { travelledLine: undefined, remainingLine: shape, currentBusPosition: null, currentBusHeading: 0 };
+    }
+
+    // Find shape index closest to current stop
+    let closestIdx = 0;
+    let minDist = Infinity;
+    for (let i = 0; i < shape.length; i++) {
+      const pt = shape[i];
+      if (!pt) continue;
+      const d = Math.hypot(pt[0] - curStop.lon, pt[1] - curStop.lat);
+      if (d < minDist) {
+        minDist = d;
+        closestIdx = i;
+      }
+    }
+
+    const travelled = closestIdx > 0 ? shape.slice(0, closestIdx + 1) : undefined;
+    const remaining = shape.slice(closestIdx);
+
+    const nextPt = shape[Math.min(closestIdx + 1, shape.length - 1)] ?? [curStop.lon, curStop.lat];
+    const heading = calcBearing([curStop.lon, curStop.lat], nextPt);
+
+    return {
+      travelledLine: travelled,
+      remainingLine: remaining.length > 0 ? remaining : shape,
+      currentBusPosition: { lat: curStop.lat, lon: curStop.lon },
+      currentBusHeading: heading,
+    };
+  }, [selectedJourney, currentStopIndex, routeLine]);
+
   // Walking path from Pickup Point to boarding stop
   const walkingLine = useMemo<[number, number][] | undefined>(() => {
     if (!destination || !topMatch || !origin) return undefined;
@@ -97,27 +198,29 @@ function Home() {
     ];
   }, [destination, topMatch, origin, stops]);
 
-  const busMarkers = useMemo<BusMarkerData[]>(() => {
-    const out: BusMarkerData[] = [];
-    for (const ping of pings.values()) {
-      const status = statusFromPing(ping.recorded_at);
-      if (status !== "live" && status !== "last_seen") continue;
-      out.push({
-        id: ping.bus_id,
-        lat: ping.lat,
-        lon: ping.lon,
-        label: "BUS",
-        status,
-        isDemo: ping.is_demo,
-      });
+  // MAP RENDERING RULES:
+  // BEFORE USER SELECTS A BUS: No moving buses on map. No fake live buses.
+  // AFTER USER SELECTS A BUS: Show only the selected bus.
+  const activeBusMarkers = useMemo<BusMarkerData[]>(() => {
+    if (!selectedJourney || !currentBusPosition) {
+      return [];
     }
-    for (const demo of demoBuses) {
-      if (!out.some((b) => b.id === demo.id)) {
-        out.push(demo);
-      }
-    }
-    return out;
-  }, [pings, demoBuses]);
+
+    return [
+      {
+        id: `selected-bus-${selectedJourney.routeShortName}`,
+        lat: currentBusPosition.lat,
+        lon: currentBusPosition.lon,
+        label: `BUS ${selectedJourney.routeShortName}`,
+        status: "live",
+        routeNo: selectedJourney.routeShortName,
+        routeName: selectedJourney.routeLongName,
+        etaMinutes: Math.max(1, (selectedJourney.stops.length - currentStopIndex) * 2),
+        heading: currentBusHeading,
+        isDemo: true,
+      },
+    ];
+  }, [selectedJourney, currentBusPosition, currentBusHeading, currentStopIndex]);
 
   const mapStops = useMemo(() => {
     const list = near.map((n) => n.stop);
@@ -125,13 +228,35 @@ function Home() {
     return dest && !list.some((s) => s.id === dest.id) ? [...list, dest] : list;
   }, [near, destination?.stopId, stops]);
 
+  // MAP RENDERING RULES:
+  // When a journey is selected, show ONLY stops belonging to that route/journey!
+  const activeMapStops = useMemo<Stop[]>(() => {
+    if (selectedJourney) {
+      return selectedJourney.stops.map((s) => ({
+        id: s.stopId,
+        name: s.name,
+        lat: s.lat,
+        lon: s.lon,
+        code: s.sequence.toString(),
+        area: null,
+      }));
+    }
+    return mapStops;
+  }, [selectedJourney, mapStops]);
+
   // Map center:
-  // - If a destination is selected → center on destination (for route preview)
-  // - If GPS is available → use real GPS (don't snap to PUNE_CENTER after grant)
-  // - If GPS not yet available → fall back to PUNE_CENTER only as initial map seed
-  const center = destination
-    ? { lat: destination.lat, lon: destination.lon }
-    : (origin ?? PUNE_CENTER);
+  // - If following live ride, center on current bus position
+  // - If destination selected, center on destination
+  // - If GPS available, center on GPS
+  const center = useMemo(() => {
+    if (currentBusPosition && isRideActive) {
+      return currentBusPosition;
+    }
+    if (destination) {
+      return { lat: destination.lat, lon: destination.lon };
+    }
+    return origin ?? PUNE_CENTER;
+  }, [currentBusPosition, isRideActive, destination, origin]);
 
   return (
     <AppShell bare>
@@ -140,51 +265,43 @@ function Home() {
           className="size-full"
           center={center}
           user={origin}
-          stops={mapStops}
-          selectedStopId={selectedStopId ?? nearest?.stop.id ?? null}
+          stops={activeMapStops}
+          selectedStopId={
+            selectedJourney
+              ? (selectedJourney.stops[currentStopIndex]?.stopId ?? null)
+              : (selectedStopId ?? nearest?.stop.id ?? null)
+          }
           destination={destination}
-          buses={busMarkers}
-          line={routeLine}
-          walkingLine={walkingLine}
+          buses={activeBusMarkers}
+          line={remainingLine}
+          travelledLine={travelledLine}
+          walkingLine={selectedJourney ? undefined : walkingLine}
           onStopClick={setSelectedStopId}
         />
       </div>
 
       <div className="trako-sheet relative z-10 -mt-6 mx-auto max-w-md space-y-3 px-4 pt-4 pb-6">
         {destination ? (
-          // Route Preview state
-          topMatch ? (
-            <RoutePreviewCard
-              destination={destination}
-              route={topMatch.route}
-              boardingStop={stops.find((s) => s.id === topMatch.boardingStopId)}
-              walkMeters={near.find((n) => n.stop.id === topMatch.boardingStopId)?.meters}
-              stopsRemaining={topMatch.destSeq - topMatch.boardSeq}
-              onClear={() => setDestination(null)}
-            />
-          ) : (
-            <section className="trako-card p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="font-display font-bold text-base">{destination.name}</p>
-                <button
-                  type="button"
-                  onClick={() => setDestination(null)}
-                  className="text-xs font-semibold text-primary"
-                >
-                  Change
-                </button>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                No direct PMPML route found from your nearby stops to this destination yet.
-              </p>
-              <Link
-                to="/routes"
-                className="flex items-center justify-center gap-1.5 rounded-xl border border-border py-2.5 text-sm font-semibold text-primary"
-              >
-                <Bus className="size-4" /> Browse All Routes
-              </Link>
-            </section>
-          )
+          // Route Preview / Active Ride state
+          <RoutePreviewCard
+            destination={destination}
+            journey={selectedJourney}
+            route={topMatch?.route}
+            boardingStop={stops.find((s) => s.id === topMatch?.boardingStopId)}
+            currentStopIndex={currentStopIndex}
+            isRideActive={isRideActive}
+            onStartRide={() => setIsRideActive(true)}
+            onEndRide={() => {
+              setIsRideActive(false);
+              setCurrentStopIndex(0);
+            }}
+            onClear={() => {
+              setDestination(null);
+              setSelectedJourney(null);
+              setIsRideActive(false);
+              setCurrentStopIndex(0);
+            }}
+          />
         ) : (
           // Default state: Location status, Nearest Stop, Search Sheet, Quick Actions
           <>

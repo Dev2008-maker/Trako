@@ -17,12 +17,16 @@ import { useEffect, useMemo, useState } from "react";
 import { searchPlaces } from "@/lib/maptiler.functions";
 import type { Stop } from "@/lib/transit";
 
+import { searchGtfsRoutes, getRouteJourney } from "@/lib/gtfs";
+
 export type Destination = {
   name: string;
   context?: string | undefined;
   lat: number;
   lon: number;
   stopId?: string | undefined;
+  routeId?: string | undefined;
+  routeShortName?: string | undefined;
 };
 
 const RECENT_KEY = "trako_recent_searches";
@@ -157,6 +161,11 @@ export function DestinationSearch({
     }
   };
 
+  const gtfsRouteMatches = useMemo(() => {
+    if (debounced.trim().length < 1) return [];
+    return searchGtfsRoutes(debounced, 4);
+  }, [debounced]);
+
   const stopMatches = useMemo(() => {
     const q = debounced.toLowerCase();
     if (q.length < 2) return [];
@@ -172,7 +181,7 @@ export function DestinationSearch({
     queryFn: () => search({ data: { query: debounced } }),
   });
 
-  const showResults = debounced.length >= 2 && !selected;
+  const showResults = (debounced.trim().length >= 1 && !selected);
 
   return (
     <section className="trako-card p-4 transition-all">
@@ -324,6 +333,40 @@ export function DestinationSearch({
       {/* Autocomplete suggestions */}
       {showResults && (
         <ul className="mt-3 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-md animate-in fade-in slide-in-from-top-2 duration-200">
+          {/* PMPML Bus Route Matches */}
+          {gtfsRouteMatches.map((route) => (
+            <li key={`gtfs-route-${route.id}`}>
+              <button
+                type="button"
+                onClick={() => {
+                  const journey = getRouteJourney(route.id);
+                  handleSelect({
+                    name: route.destination || route.longName,
+                    context: `Bus ${route.shortName} · ${route.longName}`,
+                    lat: journey?.destinationStop.lat ?? 18.5204,
+                    lon: journey?.destinationStop.lon ?? 73.8567,
+                    stopId: journey?.destinationStop.stopId,
+                    routeId: route.id,
+                    routeShortName: route.shortName,
+                  });
+                }}
+                className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left hover:bg-tint transition-colors"
+              >
+                <div className="flex h-7 px-2 items-center justify-center rounded-lg bg-primary text-primary-foreground font-display font-bold text-xs shrink-0 shadow-sm">
+                  {route.shortName}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-foreground">
+                    {route.longName}
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    PMPML Route · {route.origin} ➔ {route.destination}
+                  </span>
+                </div>
+              </button>
+            </li>
+          ))}
+
           {stopMatches.map((stop) => (
             <li key={stop.id}>
               <button
@@ -388,7 +431,7 @@ export function DestinationSearch({
             );
           })}
 
-          {!isFetching && stopMatches.length === 0 && places.length === 0 && (
+          {!isFetching && gtfsRouteMatches.length === 0 && stopMatches.length === 0 && places.length === 0 && (
             <li className="px-4 py-4 text-center text-sm text-muted-foreground">
               {isError
                 ? "Place search is unavailable right now. Try typing a bus stop name."

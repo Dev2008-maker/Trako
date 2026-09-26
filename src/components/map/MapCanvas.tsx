@@ -103,6 +103,7 @@ export default function MapCanvas({
   destination,
   buses = [],
   line,
+  travelledLine,
   walkingLine,
   onStopClick,
   className = "",
@@ -490,10 +491,39 @@ export default function MapCanvas({
     }
   }, [ready, destination?.lat, destination?.lon, destination?.name]);
 
-  // Route polylines with high contrast casing
+  // Route polylines: Active remaining route (light blue) + Previously travelled route (muted light grey/blue)
   useEffect(() => {
     const instance = map.current;
     if (!ready || !instance) return;
+
+    // 1. Previously travelled line (muted light grey/blue)
+    const travelledData = {
+      type: "Feature" as const,
+      properties: {},
+      geometry: { type: "LineString" as const, coordinates: travelledLine ?? [] },
+    };
+    const tSource = instance.getSource("trako-travelled-route");
+    if (tSource && "setData" in tSource) {
+      (tSource as maplibregl.GeoJSONSource).setData(travelledData);
+    } else if (travelledLine && travelledLine.length > 0) {
+      instance.addSource("trako-travelled-route", { type: "geojson", data: travelledData });
+      instance.addLayer({
+        id: "trako-travelled-casing",
+        type: "line",
+        source: "trako-travelled-route",
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": "#FFFFFF", "line-width": 8, "line-opacity": 0.8 },
+      });
+      instance.addLayer({
+        id: "trako-travelled-line",
+        type: "line",
+        source: "trako-travelled-route",
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": "#94A3B8", "line-width": 5, "line-opacity": 0.8 },
+      });
+    }
+
+    // 2. Active remaining route (light blue active route line)
     const data = {
       type: "Feature" as const,
       properties: {},
@@ -515,15 +545,15 @@ export default function MapCanvas({
       paint: { "line-color": "#FFFFFF", "line-width": 8, "line-opacity": 0.95 },
     });
 
-    // Core TRAKO purple route line
+    // Active route line: light blue
     instance.addLayer({
       id: "trako-route-line",
       type: "line",
       source: "trako-route",
       layout: { "line-cap": "round", "line-join": "round" },
-      paint: { "line-color": "#800080", "line-width": 5, "line-opacity": 0.9 },
+      paint: { "line-color": "#38BDF8", "line-width": 5, "line-opacity": 0.95 },
     });
-  }, [ready, line]);
+  }, [ready, line, travelledLine]);
 
   // Walking path polyline (dashed line from Pickup Point to nearest boarding stop)
   useEffect(() => {

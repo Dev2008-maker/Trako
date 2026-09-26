@@ -22,6 +22,7 @@ export type MapViewProps = {
   destination?: (LatLng & { name: string; context?: string | undefined; stopId?: string | undefined }) | null | undefined;
   buses?: BusMarkerData[] | undefined;
   line?: [number, number][] | undefined;
+  travelledLine?: [number, number][] | undefined;
   walkingLine?: [number, number][] | undefined;
   onStopClick?: ((stopId: string) => void) | undefined;
   className?: string | undefined;
