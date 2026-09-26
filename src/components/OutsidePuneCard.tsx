@@ -1,16 +1,27 @@
 import { Link } from "@tanstack/react-router";
 import { AlertCircle, Bus, Radio } from "lucide-react";
+import { useCurrentLocation } from "@/hooks/useCurrentLocation";
 
-export function OutsidePuneCard() {
+export function OutsidePuneCard({ onEnableDemo }: { onEnableDemo?: () => void }) {
+  const { setDemoMode } = useCurrentLocation();
+
+  const handleDemoClick = () => {
+    if (onEnableDemo) {
+      onEnableDemo();
+    } else {
+      setDemoMode(true);
+    }
+  };
+
   return (
-    <section className="trako-card p-4">
+    <section className="trako-card p-4 border border-amber-500/20 shadow-sm animate-in fade-in">
       <div className="flex items-center gap-2">
         <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-bold tracking-wide text-amber-700 dark:text-amber-400">
           <AlertCircle className="size-3.5" />
           OUTSIDE SERVICE AREA
         </span>
       </div>
-      <h2 className="mt-2 text-lg font-bold leading-snug">
+      <h2 className="mt-2 text-lg font-bold leading-snug text-foreground">
         Outside Pune Service Area
       </h2>
       <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
@@ -24,12 +35,13 @@ export function OutsidePuneCard() {
         >
           <Bus className="size-4" /> Browse Routes
         </Link>
-        <Link
-          to="/trips"
-          className="flex items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+        <button
+          type="button"
+          onClick={handleDemoClick}
+          className="flex items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
         >
-          <Radio className="size-4" /> Demo Mode
-        </Link>
+          <Radio className="size-4" /> Try Demo Mode
+        </button>
       </div>
     </section>
   );

@@ -1,72 +1,139 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { LatLng } from "@/lib/geo";
+import { MMIT_LOHGAON } from "@/lib/geo";
 
 export type LocationStatus = "idle" | "locating" | "granted" | "denied" | "unavailable" | "error";
 
-/**
- * Developer mock location toggle for testing.
- * Set to true only when you want to mock position at a fixed location.
- * MUST be false in production / before shipping.
- */
+export interface LocationState {
+  coords: LatLng | null;
+  accuracy: number | null;
+  status: LocationStatus;
+  isDemoMode: boolean;
+}
+
+const DEMO_STORAGE_KEY = "trako_demo_mode_active";
+
+// Shared module-level singleton state (Single Source of Truth)
+let globalRealCoords: LatLng | null = null;
+let globalRealAccuracy: number | null = null;
+let globalStatus: LocationStatus = "idle";
+let globalIsDemoMode = false;
+
+// Check localStorage for persisted demo mode choice
+if (typeof window !== "undefined") {
+  try {
+    globalIsDemoMode = localStorage.getItem(DEMO_STORAGE_KEY) === "true";
+  } catch {
+    globalIsDemoMode = false;
+  }
+}
+
+const listeners = new Set<() => void>();
+
+function notifyListeners() {
+  listeners.forEach((listener) => listener());
+}
+
+let activeWatchId: number | null = null;
+
+function startWatching() {
+  if (typeof navigator === "undefined" || !navigator.geolocation) {
+    globalStatus = "unavailable";
+    notifyListeners();
+    return;
+  }
+
+  if (activeWatchId !== null) return;
+
+  if (globalStatus !== "granted") {
+    globalStatus = "locating";
+    notifyListeners();
+  }
+
+  // Requirement 3: enableHighAccuracy: true, maximumAge: 0, timeout: 10000
+  activeWatchId = navigator.geolocation.watchPosition(
+    (position) => {
+      globalRealCoords = {
+        lat: position.coords.latitude,
+        lon: position.coords.longitude,
+      };
+      globalRealAccuracy = position.coords.accuracy;
+      globalStatus = "granted";
+      notifyListeners();
+    },
+    (error) => {
+      globalStatus = error.code === error.PERMISSION_DENIED ? "denied" : "error";
+      notifyListeners();
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 0, // Never serve cached position — always fresh real GPS
+      timeout: 10_000, // Exactly 10000ms as required
+    }
+  );
+}
+
+export function isDemoModeActive(): boolean {
+  return globalIsDemoMode;
+}
+
+export function setDemoMode(enabled: boolean) {
+  globalIsDemoMode = enabled;
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(DEMO_STORAGE_KEY, enabled ? "true" : "false");
+    } catch {
+      // Ignore
+    }
+  }
+  notifyListeners();
+}
+
+export function toggleDemoMode() {
+  setDemoMode(!globalIsDemoMode);
+}
+
 export const DEV_MODE = false;
 
 /**
- * Reads the passenger's current location for map + nearest-stop purposes.
- * This never publishes anything — sharing only happens when a trip is tracked.
- *
- * Uses watchPosition with:
- *   enableHighAccuracy: true
- *   maximumAge: 0        (never serve stale cache — always fresh GPS)
- *   timeout: 15000
+ * Single source of truth for GPS coordinates across TRAKO.
+ * Automatically switches between real GPS and simulated Demo Mode (MMIT Lohgaon).
  */
 export function useCurrentLocation(auto = true) {
-  const [coords, setCoords] = useState<LatLng | null>(null);
-  const [accuracy, setAccuracy] = useState<number | null>(null);
-  const [status, setStatus] = useState<LocationStatus>("idle");
-  const watchId = useRef<number | null>(null);
-
-  const request = useCallback(() => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setStatus("unavailable");
-      return;
-    }
-
-    setStatus((prev) => (prev === "granted" ? prev : "locating"));
-
-    // Start a watchPosition immediately — no initial getCurrentPosition needed.
-    // This ensures the very first GPS fix updates coords and status without delay,
-    // and every subsequent movement update fires automatically.
-    if (watchId.current !== null) {
-      // Already watching — no-op (e.g. user tapped GPS button twice)
-      return;
-    }
-
-    watchId.current = navigator.geolocation.watchPosition(
-      (position) => {
-        setCoords({ lat: position.coords.latitude, lon: position.coords.longitude });
-        setAccuracy(position.coords.accuracy);
-        setStatus("granted");
-      },
-      (error) => {
-        setStatus(error.code === error.PERMISSION_DENIED ? "denied" : "error");
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 0,       // Never use a cached position — always request a fresh fix
-        timeout: 15_000,
-      },
-    );
-  }, []);
+  const [, setTick] = useState(0);
 
   useEffect(() => {
-    if (auto) request();
+    const onChange = () => setTick((t) => t + 1);
+    listeners.add(onChange);
+    if (auto) {
+      startWatching();
+    }
     return () => {
-      if (watchId.current !== null && typeof navigator !== "undefined") {
-        navigator.geolocation.clearWatch(watchId.current);
-        watchId.current = null;
-      }
+      listeners.delete(onChange);
     };
-  }, [auto, request]);
+  }, [auto]);
 
-  return { coords, accuracy, status, request };
+  const request = useCallback(() => {
+    if (activeWatchId !== null && typeof navigator !== "undefined") {
+      navigator.geolocation.clearWatch(activeWatchId);
+      activeWatchId = null;
+    }
+    startWatching();
+  }, []);
+
+  // When Demo Mode is ON: simulate coordinates at MMIT Lohgaon
+  // When Demo Mode is OFF: 100% real GPS from watchPosition, NEVER default Pune coordinates
+  const coords = globalIsDemoMode ? MMIT_LOHGAON : globalRealCoords;
+  const accuracy = globalIsDemoMode ? 10 : globalRealAccuracy;
+  const status = globalIsDemoMode ? "granted" : globalStatus;
+
+  return {
+    coords,
+    accuracy,
+    status,
+    request,
+    isDemoMode: globalIsDemoMode,
+    setDemoMode,
+    toggleDemoMode,
+  };
 }

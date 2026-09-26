@@ -200,6 +200,10 @@ export default function MapCanvas({
     if (destination || isRideActive) {
       return stops;
     }
+    // Requirement 5: If user is outside Pune and no route chosen, hide nearby Pune stops
+    if (user && !isInsidePune(user)) {
+      return [];
+    }
     const list = stops.slice(0, 5);
     if (selectedStopId && !list.some((s) => s.id === selectedStopId)) {
       const sel = stops.find((s) => s.id === selectedStopId);
@@ -208,12 +212,16 @@ export default function MapCanvas({
       }
     }
     return list;
-  }, [stops, selectedStopId, destination, isRideActive]);
+  }, [stops, selectedStopId, destination, isRideActive, user]);
 
   const hasLiveBuses = useMemo(() => buses.some((b) => b.status === "live"), [buses]);
 
   /** Nearest 5 buses sorted by distance to user/center — prevents map clutter. */
   const visibleBuses = useMemo(() => {
+    // If user is outside Pune and not in an active ride, hide buses from map
+    if (user && !isInsidePune(user) && !destination && !isRideActive) {
+      return [];
+    }
     const ref = center ?? user ?? PUNE_CENTER;
     const sorted = [...buses].sort((a, b) => {
       const da = (a.lat - ref.lat) ** 2 + (a.lon - ref.lon) ** 2;
@@ -221,7 +229,7 @@ export default function MapCanvas({
       return da - db;
     });
     return sorted.slice(0, 5);
-  }, [buses, center, user]);
+  }, [buses, center, user, destination, isRideActive]);
 
   useEffect(() => {
     if (!holder.current || map.current || !styleUrl) return;
@@ -305,25 +313,66 @@ export default function MapCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [styleUrl]);
 
-  // Track whether we've already flown to the user's first real GPS fix.
-  // This prevents the map from constantly re-centering as GPS updates come in.
-  const hasFlownToUser = useRef(false);
+  // Camera Behaviour (Requirement 7: Animate map to new position on GPS update)
+  const lastUserLocation = useRef<LatLng | null>(null);
 
-  // On first GPS fix: fly to the user's real location exactly once.
-  // On subsequent GPS updates: only update the dot — don't snap the camera.
-  // The user can always retrigger a fly by tapping the GPS (recenter) button.
   useEffect(() => {
     if (!ready || !map.current || !user) return;
-    if (hasFlownToUser.current) return; // Already flew once — do nothing
-    hasFlownToUser.current = true;
+    const prev = lastUserLocation.current;
+    lastUserLocation.current = user;
+
+    if (!prev) {
+      // First GPS fix: smooth flyTo real location
+      map.current.flyTo({
+        center: [user.lon, user.lat],
+        zoom: 14,
+        duration: 900,
+        easing: easeInOut,
+        essential: true,
+      });
+      return;
+    }
+
+    // Detect GPS updates or Demo Mode toggle shifts
+    const dLat = Math.abs(prev.lat - user.lat);
+    const dLon = Math.abs(prev.lon - user.lon);
+
+    if (dLat > 0.005 || dLon > 0.005) {
+      // Large displacement (e.g. Demo Mode toggle or significant GPS jump): fly to new position
+      map.current.flyTo({
+        center: [user.lon, user.lat],
+        zoom: 14,
+        duration: 900,
+        easing: easeInOut,
+        essential: true,
+      });
+    } else if (dLat > 0.00005 || dLon > 0.00005) {
+      // Small live GPS movement while walking: smooth easeTo
+      if (!isFollowingBus && !isRideActive) {
+        map.current.easeTo({
+          center: [user.lon, user.lat],
+          duration: 700,
+          easing: easeInOut,
+        });
+      }
+    }
+  }, [ready, user?.lat, user?.lon, isFollowingBus, isRideActive]);
+
+  // Center on explicit camera center changes (e.g. destination selected)
+  const lastExplicitCenter = useRef<LatLng | null>(null);
+  useEffect(() => {
+    if (!ready || !map.current || !center) return;
+    const prev = lastExplicitCenter.current;
+    lastExplicitCenter.current = center;
+    if (prev && prev.lat === center.lat && prev.lon === center.lon) return;
+
     map.current.flyTo({
-      center: [user.lon, user.lat],
-      zoom: 14,
-      duration: 900,
+      center: [center.lon, center.lat],
+      duration: 800,
       easing: easeInOut,
       essential: true,
     });
-  }, [ready, user?.lat, user?.lon]);
+  }, [ready, center?.lat, center?.lon]);
 
   // User location marker: Google Maps style blue GPS dot, accuracy circle & Rapido green "Pickup Point" pill
   useEffect(() => {

@@ -60,7 +60,7 @@ export const Route = createFileRoute("/")({
 export type JourneyState = "no_journey" | "selected" | "active" | "completed";
 
 function Home() {
-  const { coords, status, request } = useCurrentLocation();
+  const { coords, status, request, isDemoMode, setDemoMode } = useCurrentLocation();
   const { data: stops = [] } = useQuery(stopsQuery);
 
   // 1. JOURNEY STATE MACHINE (Requirement 1)
@@ -89,7 +89,11 @@ function Home() {
   // Location & service bounds
   const origin = coords ?? null;
   const isOutsidePune = Boolean(coords && !isInsidePune(coords));
-  const near = useMemo(() => nearestStops(stops, origin, 5), [stops, origin]);
+  // Requirement 4 & 5: When user is outside Pune, do NOT calculate nearby PMPML stops!
+  const near = useMemo(() => {
+    if (!origin || isOutsidePune) return [];
+    return nearestStops(stops, origin, 5);
+  }, [stops, origin, isOutsidePune]);
   const nearest = near[0];
 
   const boardingIds = useMemo(() => near.slice(0, 3).map((n) => n.stop.id), [near]);
@@ -471,16 +475,19 @@ function Home() {
         area: null,
       }));
     }
+    if (isOutsidePune) {
+      return [];
+    }
     const list = near.map((n) => n.stop);
     const dest = destination?.stopId ? stops.find((s) => s.id === destination.stopId) : undefined;
     return dest && !list.some((s) => s.id === dest.id) ? [...list, dest] : list;
-  }, [selectedJourney, near, destination?.stopId, stops]);
+  }, [selectedJourney, near, destination?.stopId, stops, isOutsidePune]);
 
   const currentStop: GtfsStop = selectedJourney?.stops[currentStopIndex] ?? selectedJourney?.originStop ?? {
     stopId: "stop_0",
     name: originStopName,
-    lat: 18.5204,
-    lon: 73.8567,
+    lat: origin?.lat ?? 18.5204,
+    lon: origin?.lon ?? 73.8567,
     sequence: 1,
     scheduledArrival: "08:00 AM",
     scheduledDeparture: "08:00 AM",
@@ -512,7 +519,7 @@ function Home() {
     if (destination) {
       return { lat: destination.lat, lon: destination.lon };
     }
-    return origin ?? PUNE_CENTER;
+    return origin;
   }, [currentBusPosition, journeyState, destination, origin]);
 
   return (
@@ -672,7 +679,26 @@ function Home() {
                   </button>
                 )}
 
-                {isOutsidePune && <OutsidePuneCard />}
+                {/* Demo Mode active indicator with instant Exit button (Requirement 6) */}
+                {isDemoMode && (
+                  <div className="flex items-center justify-between rounded-xl bg-amber-500/15 border border-amber-500/30 p-2.5 text-xs animate-in fade-in">
+                    <div className="flex items-center gap-2">
+                      <span className="size-2 rounded-full bg-amber-500 animate-ping" />
+                      <span className="font-bold text-amber-900 dark:text-amber-200">
+                        Demo Mode (MMIT Lohgaon)
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDemoMode(false)}
+                      className="rounded-lg bg-amber-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-amber-700 transition-colors cursor-pointer"
+                    >
+                      Exit Demo
+                    </button>
+                  </div>
+                )}
+
+                {isOutsidePune && <OutsidePuneCard onEnableDemo={() => setDemoMode(true)} />}
 
                 {!isOutsidePune && nearest && (
                   <NearestStopCard
