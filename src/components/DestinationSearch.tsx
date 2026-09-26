@@ -1,8 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, MapPin, Mic, Search, X } from "lucide-react";
+import { Clock, History, Loader2, MapPin, Mic, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { searchPlaces } from "@/lib/maptiler.functions";
+import {
+  addSearchHistory,
+  clearSearchHistory,
+  getSearchHistory,
+  type SearchHistoryItem,
+} from "@/lib/journey";
 import type { Stop } from "@/lib/transit";
 
 export type Destination = {
@@ -30,7 +36,12 @@ export function DestinationSearch({
 }) {
   const [term, setTerm] = useState("");
   const [debounced, setDebounced] = useState("");
+  const [history, setHistory] = useState<SearchHistoryItem[]>([]);
   const search = useServerFn(searchPlaces);
+
+  useEffect(() => {
+    setHistory(getSearchHistory());
+  }, []);
 
   useEffect(() => {
     const id = setTimeout(() => setDebounced(term.trim()), 300);
@@ -58,12 +69,44 @@ export function DestinationSearch({
 
   const showResults = debounced.length >= 2 && !selected;
 
+  function handleSelectDestination(
+    dest: Destination,
+    type: "destination" | "stop" = "destination",
+  ) {
+    addSearchHistory({
+      type,
+      query: dest.name,
+      subtitle: dest.context,
+      lat: dest.lat,
+      lon: dest.lon,
+      stopId: dest.stopId,
+    });
+    setHistory(getSearchHistory());
+    onSelect(dest);
+  }
+
+  function handleClearHistory() {
+    clearSearchHistory();
+    setHistory([]);
+  }
+
   return (
     <section className={bare ? className : `trako-card p-4 ${className}`}>
-      <h2 className="text-base font-extrabold text-foreground">Where are you going?</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-extrabold text-foreground">Where are you going?</h2>
+        {!selected && history.length > 0 && debounced.length === 0 && (
+          <button
+            type="button"
+            onClick={handleClearHistory}
+            className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-destructive transition"
+          >
+            <Trash2 className="size-3" /> Clear History
+          </button>
+        )}
+      </div>
 
       {selected ? (
-        <div className="mt-2.5 flex items-center gap-2 rounded-2xl bg-tint px-3.5 py-2.5">
+        <div className="mt-2.5 flex items-center gap-2 rounded-2xl bg-tint px-3.5 py-2.5 border border-primary/20">
           <MapPin className="size-4 shrink-0 text-primary" />
           <span className="min-w-0 flex-1 truncate text-sm font-semibold">{selected.name}</span>
           <button
@@ -99,22 +142,58 @@ export function DestinationSearch({
         </div>
       )}
 
+      {/* Search History (Latest 5 Searches) */}
+      {!selected && debounced.length === 0 && history.length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+            <History className="size-3" /> Recent Searches
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {history.slice(0, 5).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() =>
+                  handleSelectDestination(
+                    {
+                      name: item.query,
+                      context: item.subtitle,
+                      lat: item.lat ?? 18.5204,
+                      lon: item.lon ?? 73.8567,
+                      stopId: item.stopId,
+                    },
+                    item.type === "stop" ? "stop" : "destination",
+                  )
+                }
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border/80 bg-tint/60 hover:bg-tint px-2.5 py-1 text-xs font-semibold text-foreground transition active:scale-98"
+              >
+                <Clock className="size-3 text-muted-foreground" />
+                <span className="truncate max-w-[140px]">{item.query}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {showResults && (
-        <ul className="mt-2 divide-y divide-border overflow-hidden rounded-xl border border-border">
+        <ul className="mt-2 divide-y divide-border overflow-hidden rounded-xl border border-border bg-white shadow-md">
           {stopMatches.map((stop) => (
             <li key={stop.id}>
               <button
                 type="button"
                 onClick={() =>
-                  onSelect({
-                    name: stop.name,
-                    context: stop.area ?? "Bus stop",
-                    lat: stop.lat,
-                    lon: stop.lon,
-                    stopId: stop.id,
-                  })
+                  handleSelectDestination(
+                    {
+                      name: stop.name,
+                      context: stop.area ?? "Bus stop",
+                      lat: stop.lat,
+                      lon: stop.lon,
+                      stopId: stop.id,
+                    },
+                    "stop",
+                  )
                 }
-                className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-tint transition"
               >
                 <span className="rounded-md bg-tint-strong px-1.5 py-0.5 text-[10px] font-bold text-primary">
                   STOP
@@ -135,16 +214,19 @@ export function DestinationSearch({
               <button
                 type="button"
                 onClick={() =>
-                  onSelect({
-                    name: place.name,
-                    context: place.context,
-                    lat: place.lat,
-                    lon: place.lon,
-                  })
+                  handleSelectDestination(
+                    {
+                      name: place.name,
+                      context: place.context,
+                      lat: place.lat,
+                      lon: place.lon,
+                    },
+                    "destination",
+                  )
                 }
-                className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-tint transition"
               >
-                <MapPin className="size-4 shrink-0 text-muted-foreground" />
+                <MapPin className="size-4 shrink-0 text-primary" />
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-semibold">{place.name}</span>
                   {place.context && (
@@ -157,10 +239,8 @@ export function DestinationSearch({
             </li>
           ))}
           {!isFetching && stopMatches.length === 0 && places.length === 0 && (
-            <li className="px-3 py-3 text-sm text-muted-foreground">
-              {isError
-                ? "Place search is unavailable right now. Try a bus stop name."
-                : "No matching place or bus stop."}
+            <li className="px-3 py-3 text-sm text-muted-foreground text-center">
+              No matching Pune stops or places found.
             </li>
           )}
         </ul>

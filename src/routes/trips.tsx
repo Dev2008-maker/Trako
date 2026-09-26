@@ -5,6 +5,7 @@ import {
   BellRing,
   Bookmark,
   Bus,
+  Calendar,
   CheckCircle2,
   ChevronRight,
   Clock,
@@ -12,6 +13,7 @@ import {
   Navigation,
   RotateCcw,
   Sparkles,
+  Star,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -19,12 +21,15 @@ import { AppShell } from "@/components/AppShell";
 import {
   getActiveJourney,
   getRecentJourneys,
-  getSavedRoutes,
+  getSavedRoutesDetailed,
+  getUpcomingScheduledTrips,
   saveActiveJourney,
   toggleSavedRoute,
   type JourneyState,
+  type SavedRouteItem,
+  type ScheduledTrip,
 } from "@/lib/journey";
-import { MOCK_ROUTES } from "@/integrations/supabase/mock-client";
+import { formatClock, formatDistance } from "@/lib/geo";
 
 export const Route = createFileRoute("/trips")({
   head: () => ({
@@ -51,12 +56,14 @@ export const Route = createFileRoute("/trips")({
 function TripsPage() {
   const [activeTrip, setActiveTrip] = useState<JourneyState | null>(null);
   const [recentTrips, setRecentTrips] = useState<JourneyState[]>([]);
-  const [savedRouteIds, setSavedRouteIds] = useState<string[]>([]);
+  const [savedRoutes, setSavedRoutes] = useState<SavedRouteItem[]>([]);
+  const [scheduledTrips, setScheduledTrips] = useState<ScheduledTrip[]>([]);
 
   useEffect(() => {
     setActiveTrip(getActiveJourney());
     setRecentTrips(getRecentJourneys());
-    setSavedRouteIds(getSavedRoutes());
+    setSavedRoutes(getSavedRoutesDetailed());
+    setScheduledTrips(getUpcomingScheduledTrips());
   }, []);
 
   function handleCancelTrip() {
@@ -65,110 +72,145 @@ function TripsPage() {
     toast.info("Active trip ended.");
   }
 
-  function handleToggleSave(routeId: string) {
-    const isSaved = toggleSavedRoute(routeId);
-    setSavedRouteIds(getSavedRoutes());
+  function handleToggleSave(route: SavedRouteItem) {
+    const isSaved = toggleSavedRoute(route.route_id, {
+      route_no: route.route_no,
+      name: route.route_name,
+      origin: route.origin_stop,
+      destination: route.destination_stop,
+      fare: route.fare,
+      frequency: route.frequency,
+    });
+    setSavedRoutes(getSavedRoutesDetailed());
     toast.info(isSaved ? "Route saved to your favorites." : "Route removed from favorites.");
   }
 
-  const savedRoutesList = MOCK_ROUTES.filter((r) => savedRouteIds.includes(r.id));
-
   return (
-    <AppShell title="My Trips" subtitle="Active tracking & saved Pune transit">
-      <div className="space-y-4">
+    <AppShell title="My Trips" subtitle="Active tracking, upcoming & saved Pune transit">
+      <div className="space-y-4 pb-12">
         {/* ========================================================================= */}
-        {/* 1. ACTIVE JOURNEY CARD                                                   */}
+        {/* 1. ONGOING ACTIVE JOURNEY CARD (Live Tracking)                            */}
         {/* ========================================================================= */}
         {activeTrip ? (
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#800080] via-[#6d006d] to-[#4a004a] p-5 text-white shadow-xl">
-            {/* Top banner */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="rounded-lg bg-white/20 px-2.5 py-1 text-xs font-black uppercase tracking-wider text-white">
-                  BUS {activeTrip.route_no}
-                </span>
-                <span className="flex items-center gap-1 text-xs font-bold text-emerald-300">
-                  <span className="size-2 rounded-full bg-emerald-400 animate-ping" />
-                  Live in Progress
-                </span>
+          <section className="space-y-1.5">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-emerald-500 animate-ping" />
+              Ongoing Live Journey
+            </h2>
+
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#800080] via-[#6d006d] to-[#4a004a] p-5 text-white shadow-xl">
+              {/* Top banner */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-xl bg-white/20 px-3 py-1 font-display text-sm font-black uppercase tracking-wider text-white shadow-xs">
+                    BUS {activeTrip.route_no}
+                  </span>
+                  <span className="flex items-center gap-1.5 rounded-full bg-emerald-400/20 px-2.5 py-0.5 text-xs font-bold text-emerald-300 border border-emerald-400/30">
+                    <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+                    LIVE NOW
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCancelTrip}
+                  className="rounded-lg bg-white/10 px-2.5 py-1 text-xs font-semibold text-white/80 hover:bg-white/20 hover:text-white transition"
+                >
+                  End Trip
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={handleCancelTrip}
-                className="text-xs text-white/70 hover:text-white transition"
-              >
-                End
-              </button>
-            </div>
-
-            {/* Origin & Destination */}
-            <div className="mt-3">
-              <h3 className="text-lg font-extrabold">{activeTrip.destination_stop.name}</h3>
-              <p className="text-xs text-white/80">From {activeTrip.boarding_stop.name}</p>
-            </div>
-
-            {/* Current Stop progress */}
-            <div className="mt-3 rounded-xl bg-white/10 p-3 backdrop-blur-xs">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-white/70">Current Stop:</span>
-                <span className="font-bold text-white">
-                  {activeTrip.all_stops[activeTrip.current_stop_index]?.stop.name ??
-                    activeTrip.boarding_stop.name}
-                </span>
+              {/* Origin & Destination */}
+              <div className="mt-3.5 space-y-0.5">
+                <div className="flex items-center gap-2 text-white font-extrabold text-lg leading-tight">
+                  <span className="truncate">{activeTrip.boarding_stop.name}</span>
+                  <span className="text-white/70">➔</span>
+                  <span className="truncate text-emerald-300">
+                    {activeTrip.destination_stop.name}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-white/80 pt-1">
+                  <span>
+                    Dep:{" "}
+                    {new Date(activeTrip.started_at).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  <span>•</span>
+                  <span>
+                    ETA: ~
+                    {Math.max(
+                      1,
+                      Math.round((activeTrip.duration_seconds - activeTrip.elapsed_seconds) / 60),
+                    )}{" "}
+                    mins
+                  </span>
+                </div>
               </div>
 
-              {/* Progress bar */}
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/20">
-                <div
-                  className="h-full bg-emerald-400 transition-all duration-500"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      ((activeTrip.current_stop_index + 1) /
-                        Math.max(1, activeTrip.all_stops.length)) *
+              {/* Current Stop progress */}
+              <div className="mt-3 rounded-2xl bg-white/10 p-3.5 backdrop-blur-xs border border-white/10 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-white/80">Current Stop:</span>
+                  <span className="font-bold text-white">
+                    {activeTrip.all_stops[activeTrip.current_stop_index]?.stop.name ??
+                      activeTrip.boarding_stop.name}
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="h-2 w-full overflow-hidden rounded-full bg-white/20">
+                  <div
+                    className="h-full bg-emerald-400 transition-all duration-500"
+                    style={{
+                      width: `${Math.min(
                         100,
-                    )}%`,
-                  }}
-                />
+                        ((activeTrip.current_stop_index + 1) /
+                          Math.max(1, activeTrip.all_stops.length)) *
+                          100,
+                      )}%`,
+                    }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-white/80">
+                  <span>
+                    Stop {activeTrip.current_stop_index + 1} of{" "}
+                    {Math.max(1, activeTrip.all_stops.length)}
+                  </span>
+                  <span className="flex items-center gap-1 text-emerald-300 font-bold">
+                    <BellRing className="size-3.5 animate-bounce" /> Stop Alarm Active
+                  </span>
+                </div>
               </div>
 
-              <div className="mt-2 flex items-center justify-between text-[11px] text-white/80">
-                <span>
-                  Stop {activeTrip.current_stop_index + 1} of{" "}
-                  {Math.max(1, activeTrip.all_stops.length)}
-                </span>
-                <span className="flex items-center gap-1 text-emerald-300 font-semibold">
-                  <BellRing className="size-3" /> Stop alarm active
-                </span>
-              </div>
+              {/* Continue Journey Button */}
+              <Link
+                to="/routes/$routeId"
+                params={{ routeId: activeTrip.route_id }}
+                search={{ tracking: true }}
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-3.5 text-xs font-black uppercase tracking-wider text-[#800080] shadow-lg transition hover:bg-white/95 active:scale-98"
+              >
+                <Navigation className="size-4 fill-[#800080]" />
+                Open Live Map & Tracking
+              </Link>
             </div>
-
-            {/* Continue Journey Button */}
-            <Link
-              to="/routes/$routeId"
-              params={{ routeId: activeTrip.route_id }}
-              search={{ tracking: true }}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3 text-xs font-black uppercase tracking-wider text-[#800080] shadow-md transition hover:bg-white/90 active:scale-98"
-            >
-              <Navigation className="size-4 fill-[#800080]" />
-              Continue Journey & Live Map
-            </Link>
-          </div>
+          </section>
         ) : (
-          <div className="trako-card p-4 flex items-center gap-3 bg-tint border border-border">
-            <div className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
-              <Navigation className="size-5" />
+          <div className="trako-card p-4 flex items-center gap-3.5 bg-tint border border-border">
+            <div className="grid size-11 place-items-center rounded-2xl bg-primary/10 text-primary shrink-0">
+              <Bus className="size-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-foreground">No active trip right now</p>
+              <p className="text-xs font-extrabold text-foreground">No active trip in progress</p>
               <p className="text-[11px] text-muted-foreground truncate">
-                Pick a bus route to track your journey with auto stop alarms.
+                Pick a Pune bus route to track live with stop alarms.
               </p>
             </div>
             <Link
               to="/routes"
-              className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white shadow-sm"
+              className="shrink-0 rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-primary/95 transition active:scale-95"
             >
               Browse
             </Link>
@@ -176,72 +218,205 @@ function TripsPage() {
         )}
 
         {/* ========================================================================= */}
-        {/* 2. UPCOMING ALARM STATUS CARD                                            */}
+        {/* 2. UPCOMING SCHEDULED TRIPS                                              */}
         {/* ========================================================================= */}
-        <div className="trako-card p-4 border border-border">
-          <div className="flex items-center gap-2.5">
-            <div className="grid size-9 place-items-center rounded-xl bg-amber-50 text-amber-600 ring-1 ring-amber-500/20">
-              <Bell className="size-4" />
-            </div>
-            <div>
-              <h3 className="text-xs font-bold text-foreground">Auto Stop Alarm</h3>
-              <p className="text-[11px] text-muted-foreground">
-                Sound and vibration alerts ring 2 stops before your destination.
-              </p>
-            </div>
-          </div>
-          <div className="mt-3 flex items-center justify-between border-t border-border pt-2 text-[11px]">
-            <span className="text-muted-foreground">Notification Mode: Sound + Vibration</span>
-            <Link to="/profile" className="font-semibold text-primary hover:underline">
-              Change in Profile →
-            </Link>
-          </div>
-        </div>
-
-        {/* ========================================================================= */}
-        {/* 3. SAVED ROUTES                                                          */}
-        {/* ========================================================================= */}
-        <div>
+        <section className="space-y-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Saved Routes ({savedRoutesList.length})
+            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+              <Calendar className="size-3.5 text-primary" />
+              Upcoming Scheduled Departures
             </h2>
-            <Link to="/routes" className="text-xs font-semibold text-primary">
-              View All
+            <Link to="/routes" className="text-[11px] font-bold text-primary">
+              All Schedules
             </Link>
           </div>
 
-          <div className="mt-2 space-y-2">
-            {savedRoutesList.map((r) => (
+          <div className="space-y-2.5">
+            {scheduledTrips.map((trip) => (
+              <Link
+                key={trip.id}
+                to="/routes/$routeId"
+                params={{ routeId: trip.route_id }}
+                className="trako-card p-4 flex flex-col gap-2.5 border border-border hover:border-primary/40 hover:shadow-xs transition active:scale-98"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="flex size-10 items-center justify-center rounded-2xl bg-primary font-display text-sm font-black text-white shrink-0 shadow-xs">
+                      {trip.route_no}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 font-bold text-xs text-foreground truncate">
+                        <span>{trip.origin}</span>
+                        <span>➔</span>
+                        <span className="text-primary">{trip.destination}</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {trip.route_name}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-extrabold text-blue-700 border border-blue-200 shrink-0">
+                    <Clock className="size-3" /> Scheduled
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-border/60 pt-2 text-xs">
+                  <div className="flex items-center gap-3 text-muted-foreground">
+                    <span>
+                      Departs:{" "}
+                      <strong className="text-foreground">{trip.scheduled_departure}</strong>
+                    </span>
+                    <span>•</span>
+                    <span className="font-bold text-emerald-600">
+                      in {trip.departure_minutes_from_now} mins
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1 font-bold text-primary">
+                    <span>{trip.fare}</span>
+                    <ChevronRight className="size-4" />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 3. RECENT COMPLETED TRIPS                                                */}
+        {/* ========================================================================= */}
+        <section className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+              <CheckCircle2 className="size-3.5 text-emerald-600" />
+              Recent Completed Trips
+            </h2>
+            <span className="text-[11px] text-muted-foreground font-medium">
+              {recentTrips.length} completed
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            {recentTrips.length === 0 ? (
+              <div className="trako-card p-5 text-center text-xs text-muted-foreground border border-border">
+                <Clock className="mx-auto size-7 text-muted-foreground/60 mb-1.5" />
+                <p className="font-bold text-foreground">No recent trips yet</p>
+                <p className="text-[11px]">Completed journeys will be saved automatically here.</p>
+              </div>
+            ) : (
+              recentTrips.map((trip) => (
+                <div
+                  key={trip.id}
+                  className="trako-card p-4 flex flex-col gap-2.5 border border-border hover:border-border/90 transition"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="flex size-9 items-center justify-center rounded-2xl bg-tint-strong font-display text-xs font-black text-primary shrink-0">
+                        {trip.route_no}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-foreground truncate">
+                          {trip.boarding_stop.name} ➔ {trip.destination_stop.name}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {new Date(trip.started_at).toLocaleDateString([], {
+                            month: "short",
+                            day: "numeric",
+                          })}{" "}
+                          at{" "}
+                          {new Date(trip.started_at).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-extrabold text-emerald-700 border border-emerald-200 shrink-0">
+                      <CheckCircle2 className="size-3" /> Completed
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-border/60 pt-2 text-xs">
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      {trip.total_distance_meters && (
+                        <span>{formatDistance(trip.total_distance_meters)}</span>
+                      )}
+                      <span>•</span>
+                      <span>Duration: {Math.round(trip.duration_seconds / 60)} min</span>
+                      {trip.fare_paid && (
+                        <>
+                          <span>•</span>
+                          <span className="font-bold text-primary">{trip.fare_paid}</span>
+                        </>
+                      )}
+                    </div>
+
+                    <Link
+                      to="/routes/$routeId"
+                      params={{ routeId: trip.route_id }}
+                      search={{
+                        boarding: trip.boarding_stop.id,
+                        destination: trip.destination_stop.id,
+                      }}
+                      className="inline-flex items-center gap-1 rounded-xl bg-tint px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary hover:text-white transition active:scale-95"
+                    >
+                      <RotateCcw className="size-3" />
+                      Repeat Trip
+                    </Link>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 4. SAVED FAVOURITE ROUTES                                                */}
+        {/* ========================================================================= */}
+        <section className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+              <Bookmark className="size-3.5 text-primary" />
+              Saved Favourite Routes ({savedRoutes.length})
+            </h2>
+            <Link to="/routes" className="text-[11px] font-bold text-primary">
+              Browse Routes
+            </Link>
+          </div>
+
+          <div className="space-y-2.5">
+            {savedRoutes.map((r) => (
               <div
-                key={r.id}
+                key={r.route_id}
                 className="trako-card p-3.5 flex items-center justify-between gap-3 border border-border hover:border-primary/30 transition"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="grid size-9 place-items-center rounded-xl bg-primary text-xs font-black text-white shrink-0">
+                  <span className="grid size-9 place-items-center rounded-2xl bg-primary text-xs font-black text-white shrink-0">
                     {r.route_no}
                   </span>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-foreground truncate">{r.name}</p>
+                    <p className="text-xs font-bold text-foreground truncate">{r.route_name}</p>
                     <p className="text-[11px] text-muted-foreground truncate">
-                      {r.origin} ➔ {r.destination}
+                      {r.origin_stop} ➔ {r.destination_stop}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     type="button"
-                    onClick={() => handleToggleSave(r.id)}
+                    onClick={() => handleToggleSave(r)}
                     aria-label="Remove bookmark"
-                    className="p-1.5 text-primary hover:text-muted-foreground"
+                    className="p-1.5 text-primary hover:text-muted-foreground transition active:scale-95"
                   >
                     <Bookmark className="size-4 fill-primary" />
                   </button>
                   <Link
                     to="/routes/$routeId"
-                    params={{ routeId: r.id }}
-                    className="grid size-8 place-items-center rounded-lg bg-tint text-foreground hover:bg-primary hover:text-white transition"
+                    params={{ routeId: r.route_id }}
+                    className="grid size-8 place-items-center rounded-xl bg-tint text-primary hover:bg-primary hover:text-white transition active:scale-95"
                   >
                     <ChevronRight className="size-4" />
                   </Link>
@@ -249,61 +424,7 @@ function TripsPage() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* ========================================================================= */}
-        {/* 4. RECENT JOURNEYS                                                       */}
-        {/* ========================================================================= */}
-        <div>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Recent Journeys
-          </h2>
-
-          <div className="mt-2 space-y-2">
-            {recentTrips.length === 0 ? (
-              <p className="trako-card p-4 text-xs text-muted-foreground text-center">
-                No recent trips recorded yet.
-              </p>
-            ) : (
-              recentTrips.map((trip) => (
-                <div
-                  key={trip.id}
-                  className="trako-card p-3.5 flex items-center justify-between gap-3 border border-border"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="rounded bg-tint-strong px-2 py-0.5 text-[11px] font-extrabold text-primary">
-                        BUS {trip.route_no}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {new Date(trip.started_at).toLocaleDateString([], {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs font-bold text-foreground truncate">
-                      {trip.boarding_stop.name} ➔ {trip.destination_stop.name}
-                    </p>
-                  </div>
-
-                  <Link
-                    to="/routes/$routeId"
-                    params={{ routeId: trip.route_id }}
-                    search={{
-                      boarding: trip.boarding_stop.id,
-                      destination: trip.destination_stop.id,
-                    }}
-                    className="inline-flex items-center gap-1 rounded-xl bg-tint px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary hover:text-white transition"
-                  >
-                    <RotateCcw className="size-3" />
-                    Repeat
-                  </Link>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        </section>
       </div>
     </AppShell>
   );

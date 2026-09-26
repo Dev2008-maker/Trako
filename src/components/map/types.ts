@@ -8,6 +8,7 @@ export type BusMarkerData = {
   label: string;
   status: "live" | "last_seen";
   isDemo?: boolean;
+  bearing?: number; // Heading angle in degrees 0-360
 };
 
 export type MapViewProps = {
@@ -31,4 +32,6 @@ export type MapViewProps = {
   isDemoMode?: boolean;
   onToggleDemoMode?: () => void;
   pickupPointLabel?: string;
+  followBus?: boolean;
+  onToggleFollowBus?: () => void;
 };

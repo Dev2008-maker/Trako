@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock,
+  Compass,
   MapPin,
   Navigation,
   Pause,
@@ -29,6 +30,7 @@ import { MapView } from "@/components/map/MapView";
 import { routeDetailQuery, type Stop } from "@/lib/transit";
 import { fetchLiveTrafficETA, type TrafficETAResult } from "@/lib/traffic";
 import {
+  addNotification,
   getActiveJourney,
   getAlarmPreferences,
   getSavedRoutes,
@@ -40,6 +42,7 @@ import {
   type JourneyState,
 } from "@/lib/journey";
 import {
+  calculateBearing,
   distanceMeters,
   extractSubPolyline,
   findClosestPointIndex,
@@ -104,9 +107,6 @@ function RouteDetailsPage() {
   );
   const [selectedTimelineStopId, setSelectedTimelineStopId] = useState<string | null>(null);
 
-  // Journey mode selector: "demo" (approx 100s compressed) or "live" (real GTFS elapsed time)
-  const [journeyMode, setJourneyMode] = useState<"demo" | "live">("demo");
-
   // Saved route bookmark state
   const [isSaved, setIsSaved] = useState(() => {
     return getSavedRoutes().includes(routeId);
@@ -126,12 +126,24 @@ function RouteDetailsPage() {
     return Boolean(search.tracking);
   });
 
+  // Follow Bus camera tracking mode
+  const [followBus, setFollowBus] = useState<boolean>(true);
+
+  // Speed multiplier for testing: 1x (Realtime GTFS standard), 2x, 5x, 10x, 30x
+  const [speedMultiplier, setSpeedMultiplier] = useState<number>(1);
+
+  // Alarm Trigger Mode: 2 stops before, 1 stop before, 500m radius, 250m radius
+  const [alarmTriggerMode, setAlarmTriggerMode] = useState<"2_stops" | "1_stop" | "500m" | "250m">(
+    "2_stops",
+  );
+
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [completedSummary, setCompletedSummary] = useState<JourneyState | null>(null);
 
   // Ref for auto-scrolling to boarding stop
   const boardingCardRef = useRef<HTMLDivElement | null>(null);
 
-  // Real-time animation elapsed seconds
+  // Real-time animation elapsed seconds (accumulates GTFS seconds)
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(() => {
     const active = getActiveJourney();
     if (active && (active.route_id === routeId || active.route_no === routeId)) {
@@ -225,9 +237,10 @@ function RouteDetailsPage() {
 
     let totalDurationMins = endArrMin - startDepMin;
     if (totalDurationMins <= 0) totalDurationMins += 24 * 60;
-    totalDurationMins = Math.max(totalDurationMins, (subStops.length - 1) * 3);
+    // Guarantee at least 2.5 minutes per stop segment in timetable
+    totalDurationMins = Math.max(totalDurationMins, (subStops.length - 1) * 2.5);
 
-    const totalRealSeconds = totalDurationMins * 60;
+    const totalRealSeconds = Math.round(totalDurationMins * 60);
 
     // Relative seconds for each stop from start
     const relativeStopSeconds: Array<{ arrSec: number; depSec: number }> = [];
@@ -243,7 +256,7 @@ function RouteDetailsPage() {
         let depSec = (timeToMinutes(item.departureTime) - startDepMin) * 60;
         if (depSec < 0) depSec += 24 * 3600;
 
-        arrSec = Math.max(prevDep + 15, arrSec);
+        arrSec = Math.max(prevDep + 30, arrSec);
         depSec = Math.max(arrSec, depSec);
         prevDep = depSec;
 
@@ -281,21 +294,8 @@ function RouteDetailsPage() {
   }, [routeData, boardingStopId, destinationStopId]);
 
   // =========================================================================
-  // ANIMATION & TIMING ENGINE (DEMO vs LIVE MODE)
+  // REAL-TIME ANIMATION & TIMETABLE PROGRESS LOOP
   // =========================================================================
-  const mode = journey?.mode ?? journeyMode;
-  const DEMO_TARGET_SECONDS = 100; // 90-120 seconds for full route in Demo Mode
-
-  // Speed multiplier: in Demo Mode, scales real seconds down to ~100s
-  const speedFactor = useMemo(() => {
-    if (!timingProfile) return 1;
-    if (mode === "demo") {
-      return timingProfile.totalRealSeconds / DEMO_TARGET_SECONDS;
-    }
-    return 1; // Live Mode: 1 real second = 1 GTFS second
-  }, [mode, timingProfile]);
-
-  // Main real-time journey animation loop
   useEffect(() => {
     if (!isTracking || !journey || journey.journey_status !== "active" || !timingProfile) {
       return;
@@ -308,7 +308,7 @@ function RouteDetailsPage() {
       lastTick = now;
 
       setElapsedSeconds((prevElapsed) => {
-        const nextElapsed = prevElapsed + deltaSec * speedFactor;
+        const nextElapsed = prevElapsed + deltaSec * speedMultiplier;
         const totalSec = timingProfile.totalRealSeconds;
 
         // Check if journey reached destination
@@ -319,38 +319,59 @@ function RouteDetailsPage() {
             progress_percent: 100,
             elapsed_seconds: totalSec,
             current_stop_index: timingProfile.dIdx,
+            total_distance_meters: routeData?.totalDistanceMeters ?? 14200,
+            fare_paid: routeData?.fare ?? "₹20",
           };
           saveActiveJourney(null);
           saveRecentJourney(finished);
+          addNotification({
+            type: "journey_completed",
+            title: `Arrived at ${journey.destination_stop.name}`,
+            message: `Completed trip on Bus ${journey.route_no} from ${journey.boarding_stop.name} in ${Math.round(totalSec / 60)} mins.`,
+            route_no: journey.route_no,
+            stop_name: journey.destination_stop.name,
+          });
           setIsTracking(false);
+          setCompletedSummary(finished);
 
-          // Trigger destination arrival alarm
+          // Trigger destination arrival fanfare
           const prefs = getAlarmPreferences();
           if (prefs.soundEnabled) playAlarmChime("arrival");
           if (prefs.vibrationEnabled) triggerVibration([400, 200, 400, 200, 600]);
           toast.success(`You have arrived at ${journey.destination_stop.name}! Deboard now.`);
-          setJourney(finished);
+          setJourney(null);
           return totalSec;
         }
 
         return nextElapsed;
       });
-    }, 100); // 10fps smooth coordinate update
+    }, 250); // 4 updates per second for ultra-smooth GTFS interpolation
 
     return () => clearInterval(interval);
-  }, [isTracking, journey, timingProfile, speedFactor]);
+  }, [
+    isTracking,
+    journey,
+    timingProfile,
+    speedMultiplier,
+    routeData?.fare,
+    routeData?.totalDistanceMeters,
+  ]);
 
-  // Compute live bus position, completed/remaining polylines, and active stop
+  // Compute live bus position, bearing angle, completed/remaining polylines, and active stop
   const liveState = useMemo(() => {
     const coords = routeData?.line ?? [];
     if (!timingProfile || coords.length === 0) {
       return {
         currentPoint: null,
+        bearing: 0,
         completedCoords: [],
         remainingCoords: coords,
         activeStopIndex: 0,
         stopsRemaining: 0,
         etaMinutes: 0,
+        totalRemainingSec: 0,
+        nextStopRemainingSec: 0,
+        remainingMeters: 0,
         progressPercent: 0,
       };
     }
@@ -370,7 +391,6 @@ function RouteDetailsPage() {
 
     const startCoordIdx = stopCoordIndices[0] ?? 0;
     const endCoordIdx = stopCoordIndices[stopCoordIndices.length - 1] ?? coords.length - 1;
-    const journeyFullCoords = coords.slice(startCoordIdx, endCoordIdx + 1);
 
     // Find current active leg
     let activeSubIdx = 0;
@@ -382,18 +402,22 @@ function RouteDetailsPage() {
 
     const currentStopGlobalIdx = bIdx + activeSubIdx;
     const stopsRemaining = Math.max(0, dIdx - currentStopGlobalIdx);
-    const etaMinutes = Math.max(1, Math.round(((totalRealSeconds - tSim) / 60) * 1) / 1);
+    const totalRemainingSec = Math.max(0, totalRealSeconds - tSim);
+    const etaMinutes = Math.max(1, Math.ceil(totalRemainingSec / 60));
 
     // Calculate exact bus coordinates along leg
     const curStopTimes = relativeStopSeconds[activeSubIdx]!;
     const nextStopTimes = relativeStopSeconds[activeSubIdx + 1];
 
     let currentPoint: LatLng;
+    let bearing = 0;
     let completedCoords: [number, number][] = [];
     let remainingCoords: [number, number][] = [];
 
     const curP = stopCoordIndices[activeSubIdx] ?? 0;
     const nextP = stopCoordIndices[activeSubIdx + 1] ?? curP;
+
+    const nextStopRemainingSec = nextStopTimes ? Math.max(0, nextStopTimes.arrSec - tSim) : 0;
 
     if (!nextStopTimes || tSim <= curStopTimes.depSec) {
       // Bus is dwelling at stop
@@ -401,6 +425,14 @@ function RouteDetailsPage() {
       currentPoint = { lon: stopObj.lon, lat: stopObj.lat };
       completedCoords = coords.slice(0, curP + 1);
       remainingCoords = coords.slice(curP);
+
+      const nextStopObj = subStops[activeSubIdx + 1]?.stop;
+      if (nextStopObj) {
+        bearing = calculateBearing(
+          { lat: stopObj.lat, lon: stopObj.lon },
+          { lat: nextStopObj.lat, lon: nextStopObj.lon },
+        );
+      }
     } else {
       // Bus is travelling along polyline between curP and nextP
       const legDuration = Math.max(1, nextStopTimes.arrSec - curStopTimes.depSec);
@@ -410,23 +442,36 @@ function RouteDetailsPage() {
       const interp = interpolatePolyline(legPoly, legFraction);
 
       currentPoint = interp.point;
+      bearing = interp.bearing;
       completedCoords = [...coords.slice(0, curP), ...interp.completed];
       remainingCoords = [...interp.remaining, ...coords.slice(nextP + 1)];
     }
 
+    // Calculate remaining road distance in meters
+    let remainingMeters = 0;
+    for (let i = 0; i < remainingCoords.length - 1; i++) {
+      const a = remainingCoords[i]!;
+      const b = remainingCoords[i + 1]!;
+      remainingMeters += distanceMeters({ lat: a[1], lon: a[0] }, { lat: b[1], lon: b[0] });
+    }
+
     return {
       currentPoint,
+      bearing,
       completedCoords,
       remainingCoords,
       activeStopIndex: currentStopGlobalIdx,
       stopsRemaining,
       etaMinutes,
+      totalRemainingSec,
+      nextStopRemainingSec,
+      remainingMeters,
       progressPercent,
     };
   }, [routeData?.line, timingProfile, elapsedSeconds]);
 
   // Trigger stop alarms when approaching destination
-  const lastAlarmFiredRef = useRef<number>(-1);
+  const lastAlarmFiredRef = useRef<string>("");
 
   // =========================================================================
   // GOOGLE ROUTES API LIVE TRAFFIC INTEGRATION (Phase 4.0)
@@ -436,17 +481,11 @@ function RouteDetailsPage() {
   const [trafficLastChecked, setTrafficLastChecked] = useState<number | null>(null);
 
   const fetchTraffic = useCallback(async () => {
-    // Feature disabled in Demo Mode (Requirement 7)
-    if (mode === "demo") {
-      setTrafficData(null);
-      return;
-    }
     if (!timingProfile) return;
 
     const dest = timingProfile.subStops[timingProfile.subStops.length - 1]?.stop;
     if (!dest) return;
 
-    // Use current bus point if moving, otherwise boarding stop
     const curPos = liveState.currentPoint ?? timingProfile.subStops[0]?.stop;
     if (!curPos) return;
 
@@ -460,57 +499,70 @@ function RouteDetailsPage() {
       setTrafficData(res);
       setTrafficLastChecked(Date.now());
     } catch {
-      // Fallback is handled automatically inside fetchLiveTrafficETA
+      // Fallback is handled automatically
     } finally {
       setIsTrafficLoading(false);
     }
-  }, [mode, timingProfile, liveState.currentPoint, liveState.etaMinutes]);
+  }, [timingProfile, liveState.currentPoint, liveState.etaMinutes]);
 
-  // Poll traffic every 45s (30-60s) during active journey in Live Mode only
+  // Poll traffic every 45s during active journey
   useEffect(() => {
-    if (mode === "demo") {
-      setTrafficData(null);
-      return;
-    }
-
-    // Initial fetch
     fetchTraffic();
 
     if (!isTracking) return;
 
     const interval = setInterval(() => {
       fetchTraffic();
-    }, 45000); // 45 seconds
+    }, 45000);
 
     return () => clearInterval(interval);
-  }, [mode, isTracking, fetchTraffic]);
+  }, [isTracking, fetchTraffic]);
 
-  // When active stop advances in Live Mode, refresh live traffic
-  useEffect(() => {
-    if (mode === "live" && isTracking) {
-      fetchTraffic();
-    }
-  }, [mode, isTracking, fetchTraffic, liveState.activeStopIndex]);
+  // Smart Stop Alarm Trigger logic
   useEffect(() => {
     if (!isTracking || !journey) return;
     const stopsLeft = liveState.stopsRemaining;
+    const distLeftM = liveState.remainingMeters;
 
-    if (stopsLeft === 2 && lastAlarmFiredRef.current !== 2) {
-      lastAlarmFiredRef.current = 2;
-      const prefs = getAlarmPreferences();
-      if (prefs.soundEnabled) playAlarmChime("alarm");
-      if (prefs.vibrationEnabled) triggerVibration([250, 150, 250]);
-      toast.warning(`Get ready! 2 stops before ${journey.destination_stop.name}.`);
-    } else if (stopsLeft === 1 && lastAlarmFiredRef.current !== 1) {
-      lastAlarmFiredRef.current = 1;
-      const prefs = getAlarmPreferences();
-      if (prefs.soundEnabled) playAlarmChime("alarm");
-      if (prefs.vibrationEnabled) triggerVibration([300, 150, 300, 150, 400]);
-      toast.warning(`Next stop is your destination! Prepare to deboard.`);
+    let shouldTrigger = false;
+    let alarmMsg = "";
+    let triggerKey = "";
+
+    if (alarmTriggerMode === "2_stops" && stopsLeft <= 2) {
+      shouldTrigger = true;
+      triggerKey = "2_stops";
+      alarmMsg = `Get ready! 2 stops before ${journey.destination_stop.name}.`;
+    } else if (alarmTriggerMode === "1_stop" && stopsLeft <= 1) {
+      shouldTrigger = true;
+      triggerKey = "1_stop";
+      alarmMsg = `Next stop is your destination (${journey.destination_stop.name})! Prepare to deboard.`;
+    } else if (alarmTriggerMode === "500m" && distLeftM > 0 && distLeftM <= 500) {
+      shouldTrigger = true;
+      triggerKey = "500m";
+      alarmMsg = `Within 500 meters of ${journey.destination_stop.name}! Deboard soon.`;
+    } else if (alarmTriggerMode === "250m" && distLeftM > 0 && distLeftM <= 250) {
+      shouldTrigger = true;
+      triggerKey = "250m";
+      alarmMsg = `Arriving at ${journey.destination_stop.name} within 250 meters!`;
     }
-  }, [isTracking, journey, liveState.stopsRemaining]);
 
-  // Start Journey Handler
+    if (shouldTrigger && lastAlarmFiredRef.current !== triggerKey) {
+      lastAlarmFiredRef.current = triggerKey;
+      const prefs = getAlarmPreferences();
+      if (prefs.soundEnabled) playAlarmChime("alarm");
+      if (prefs.vibrationEnabled) triggerVibration([300, 150, 300, 150, 450]);
+      addNotification({
+        type: "alarm_triggered",
+        title: `Approaching ${journey.destination_stop.name}`,
+        message: alarmMsg,
+        route_no: journey.route_no,
+        stop_name: journey.destination_stop.name,
+      });
+      toast.warning(alarmMsg, { duration: 6000 });
+    }
+  }, [isTracking, journey, liveState.stopsRemaining, liveState.remainingMeters, alarmTriggerMode]);
+
+  // Start Journey Handler (Realtime GTFS standard)
   function handleStartJourney() {
     if (!routeData?.route || !routeData.stops.length || !timingProfile) return;
 
@@ -543,9 +595,8 @@ function RouteDetailsPage() {
       all_stops: routeData.stopTimes,
       shape_coordinates: routeData.line,
       current_bus_location: { lat: boardingObj.lat, lon: boardingObj.lon },
-      mode: journeyMode,
-      duration_seconds:
-        journeyMode === "demo" ? DEMO_TARGET_SECONDS : timingProfile.totalRealSeconds,
+      mode: "live",
+      duration_seconds: timingProfile.totalRealSeconds,
       elapsed_seconds: 0,
       progress_percent: 0,
     };
@@ -553,15 +604,24 @@ function RouteDetailsPage() {
     saveActiveJourney(newJourney);
     setJourney(newJourney);
     setElapsedSeconds(0);
-    lastAlarmFiredRef.current = -1;
+    lastAlarmFiredRef.current = "";
     setIsTracking(true);
+    setFollowBus(true);
+
+    addNotification({
+      type: "journey_started",
+      title: `Boarded Bus ${routeData.route.route_no}`,
+      message: `Started journey from ${boardingObj.name} to ${destObj.name}.`,
+      route_no: routeData.route.route_no,
+      stop_name: boardingObj.name,
+    });
 
     toast.success(
-      `Journey started on Route ${routeData.route.route_no} (${journeyMode === "demo" ? "Demo Mode ~100s" : "Live Mode"})!`,
+      `Journey started on Route ${routeData.route.route_no}! Tracking live along GTFS schedule.`,
     );
 
     const prefs = getAlarmPreferences();
-    if (prefs.soundEnabled) playAlarmChime("alarm");
+    if (prefs.soundEnabled) playAlarmChime("test");
   }
 
   function handlePauseTracking() {
@@ -580,21 +640,6 @@ function RouteDetailsPage() {
       toast.info("Live tracking resumed.");
     } else {
       toast.info("Live tracking paused.");
-    }
-  }
-
-  function handleToggleMode(newMode: "demo" | "live") {
-    setJourneyMode(newMode);
-    if (journey) {
-      const updated: JourneyState = {
-        ...journey,
-        mode: newMode,
-      };
-      saveActiveJourney(updated);
-      setJourney(updated);
-      toast.info(
-        `Switched to ${newMode === "demo" ? "Demo Mode (~100s simulation)" : "Live Mode (Real-time GTFS)"}.`,
-      );
     }
   }
 
@@ -654,7 +699,6 @@ function RouteDetailsPage() {
     totalDistanceMeters,
     totalDurationMinutes,
     stopTimes,
-    timetable,
   } = routeData;
 
   const boardingStop = stops.find((s) => s.stop.id === boardingStopId)?.stop ?? stops[0]!.stop;
@@ -666,7 +710,7 @@ function RouteDetailsPage() {
     stopTimes[liveState.activeStopIndex]?.stop ?? journey?.boarding_stop ?? boardingStop;
   const nextLiveStop = stopTimes[liveState.activeStopIndex + 1]?.stop ?? null;
 
-  // Animated live bus marker
+  // Animated live bus marker with heading rotation
   const liveBuses = liveState.currentPoint
     ? [
         {
@@ -675,10 +719,22 @@ function RouteDetailsPage() {
           lon: liveState.currentPoint.lon,
           label: route.route_no,
           status: "live" as const,
-          isDemo: mode === "demo",
+          bearing: liveState.bearing,
         },
       ]
     : [];
+
+  // Countdown strings
+  const formatCountdown = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    if (m === 0) return `${s}s`;
+    return `${m}m ${String(s).padStart(2, "0")}s`;
+  };
+
+  const walkToDestM = userLoc
+    ? distanceMeters(userLoc, { lat: destStop.lat, lon: destStop.lon })
+    : null;
 
   return (
     <AppShell
@@ -764,15 +820,21 @@ function RouteDetailsPage() {
         </div>
 
         {/* ========================================================================= */}
-        {/* 2. MINI INTERACTIVE MAP (Height 200px: Blue remaining, Grey completed)    */}
+        {/* 2. INTERACTIVE LIVE MAP (Follow Bus, Blue Remaining Route, Grey Completed) */}
         {/* ========================================================================= */}
         <div className="overflow-hidden rounded-2xl border border-border shadow-xs">
-          <div className="h-[200px] w-full relative">
+          <div
+            className={
+              isTracking ? "h-[290px] sm:h-[350px] w-full relative" : "h-[210px] w-full relative"
+            }
+          >
             <MapView
               className="size-full"
               center={
-                liveState.currentPoint ??
-                (boardingStop ? { lat: boardingStop.lat, lon: boardingStop.lon } : PUNE_CENTER)
+                followBus && liveState.currentPoint
+                  ? liveState.currentPoint
+                  : (liveState.currentPoint ??
+                    (boardingStop ? { lat: boardingStop.lat, lon: boardingStop.lon } : PUNE_CENTER))
               }
               stops={stops.map((s) => s.stop)}
               selectedStopId={selectedTimelineStopId}
@@ -784,13 +846,11 @@ function RouteDetailsPage() {
               }
               completedLine={liveState.completedCoords}
               lineColor="#388bfd"
-              trafficSegments={
-                mode === "live" && trafficData?.trafficSegments?.length
-                  ? trafficData.trafficSegments
-                  : undefined
-              }
+              trafficSegments={trafficData?.trafficSegments}
               fitBounds={!isTracking}
               buses={liveBuses}
+              followBus={followBus}
+              onToggleFollowBus={() => setFollowBus((prev) => !prev)}
               onStopClick={(sId) => {
                 setSelectedTimelineStopId(sId);
                 const el = document.getElementById(`stop-item-${sId}`);
@@ -801,116 +861,125 @@ function RouteDetailsPage() {
           </div>
         </div>
 
-        {/* Traffic Status / Legend (Requirement 5 & 6) */}
-        {mode === "live" && (
-          <div className="flex items-center justify-between rounded-xl bg-tint/60 px-3 py-1.5 text-[11px] border border-border/40">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-muted-foreground">Traffic:</span>
-              <span className="flex items-center gap-1 font-bold text-emerald-700">
-                <span className="size-2 rounded-full bg-emerald-500" /> Fast
-              </span>
-              <span className="flex items-center gap-1 font-bold text-amber-700">
-                <span className="size-2 rounded-full bg-amber-500" /> Slow
-              </span>
-              <span className="flex items-center gap-1 font-bold text-rose-700">
-                <span className="size-2 rounded-full bg-rose-500" /> Jam
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <span>
-                {isTrafficLoading
-                  ? "Checking traffic…"
-                  : trafficData?.isAvailable
-                    ? "Google Routes API"
-                    : "GTFS Fallback"}
-              </span>
-              <button
-                type="button"
-                onClick={fetchTraffic}
-                disabled={isTrafficLoading}
-                title="Refresh live traffic"
-                className="grid size-5 place-items-center rounded hover:text-foreground disabled:opacity-50"
-              >
-                <RefreshCw
-                  className={`size-3 ${isTrafficLoading ? "animate-spin text-primary" : ""}`}
-                />
-              </button>
-            </div>
+        {/* Traffic Status / Google Routes Live Indicator */}
+        <div className="flex items-center justify-between rounded-xl bg-tint/60 px-3 py-1.5 text-[11px] border border-border/40">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-muted-foreground">Traffic:</span>
+            <span className="flex items-center gap-1 font-bold text-emerald-700">
+              <span className="size-2 rounded-full bg-emerald-500" /> Fast
+            </span>
+            <span className="flex items-center gap-1 font-bold text-amber-700">
+              <span className="size-2 rounded-full bg-amber-500" /> Slow
+            </span>
+            <span className="flex items-center gap-1 font-bold text-rose-700">
+              <span className="size-2 rounded-full bg-rose-500" /> Jam
+            </span>
           </div>
-        )}
+
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <span>
+              {isTrafficLoading
+                ? "Checking live traffic…"
+                : trafficData?.isAvailable
+                  ? "Google Routes API"
+                  : "GTFS Timetable"}
+            </span>
+            <button
+              type="button"
+              onClick={fetchTraffic}
+              disabled={isTrafficLoading}
+              title="Refresh live traffic"
+              className="grid size-5 place-items-center rounded hover:text-foreground disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`size-3 ${isTrafficLoading ? "animate-spin text-primary" : ""}`}
+              />
+            </button>
+          </div>
+        </div>
 
         {/* ========================================================================= */}
-        {/* 3. LIVE PROGRESS DASHBOARD (Continuous Progress Bar, Mode Toggle, ETA)    */}
+        {/* 3. LIVE PASSENGER TRACKING DASHBOARD                                      */}
         {/* ========================================================================= */}
         {isTracking && journey ? (
-          <div className="trako-card border-2 border-primary/25 p-4 bg-gradient-to-br from-white via-white to-purple-50/50 shadow-sm space-y-3">
-            {/* Top row with mode badge and status */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleToggleMode(mode === "demo" ? "live" : "demo")}
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold shadow-xs transition ${
-                    mode === "demo"
-                      ? "bg-amber-100 text-amber-900 border border-amber-300"
-                      : "bg-blue-100 text-blue-900 border border-blue-300"
-                  }`}
-                >
-                  {mode === "demo" ? (
-                    <>
-                      <Zap className="size-3 text-amber-600 fill-amber-500" /> DEMO MODE (~100s)
-                    </>
-                  ) : (
-                    <>
-                      <Clock className="size-3 text-blue-600" /> LIVE MODE (Real GTFS)
-                    </>
-                  )}
-                </button>
-                <span className="text-[10px] text-muted-foreground">Tap to switch</span>
+          <div className="trako-card border-2 border-primary/30 p-4 bg-gradient-to-br from-white via-white to-purple-50/60 shadow-md space-y-3.5">
+            {/* Top row with Live indicator and Speed Controls */}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-black text-emerald-800 border border-emerald-300 shadow-2xs">
+                  <span className="size-2 rounded-full bg-emerald-500 animate-ping" />
+                  LIVE TRACKING
+                </span>
+                <span className="text-xs font-extrabold text-primary">BUS {route.route_no}</span>
               </div>
 
-              {/* Delay Badge (Requirement 4) */}
-              {mode === "demo" ? (
-                <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800 border border-amber-200">
-                  ⚡ Demo Mode (GTFS)
-                </span>
-              ) : trafficData?.badgeVariant === "amber" ? (
-                <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2.5 py-0.5 text-[11px] font-extrabold text-amber-900 border border-amber-300 shadow-2xs">
-                  <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  {trafficData.badgeText}
-                </span>
-              ) : trafficData?.badgeVariant === "rose" ? (
-                <span className="inline-flex items-center gap-1 rounded-md bg-rose-100 px-2.5 py-0.5 text-[11px] font-extrabold text-rose-900 border border-rose-300 shadow-2xs">
-                  <span className="size-1.5 rounded-full bg-rose-500 animate-pulse" />
-                  {trafficData.badgeText}
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-800 border border-emerald-300 shadow-2xs">
-                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  {trafficData?.badgeText ?? "On Time"}
-                </span>
-              )}
-            </div>
-
-            {/* Continuous Progress Bar (Blue / Grey) */}
-            <div>
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="font-bold text-foreground">Journey Progress</span>
-                <span className="font-extrabold text-primary">
-                  {liveState.progressPercent.toFixed(1)}%
-                </span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                <div
-                  className="h-full bg-primary transition-all duration-150 ease-out"
-                  style={{ width: `${Math.min(100, liveState.progressPercent)}%` }}
-                />
+              {/* Speed Controls: 1x (Realtime), 2x, 5x, 10x, 30x */}
+              <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1">
+                <span className="px-1.5 text-[10px] font-bold text-muted-foreground">Speed:</span>
+                {[1, 2, 5, 10, 30].map((spd) => (
+                  <button
+                    key={spd}
+                    type="button"
+                    onClick={() => {
+                      setSpeedMultiplier(spd);
+                      toast.info(
+                        `Simulation speed set to ${spd}x (${spd === 1 ? "Real-time" : "Accelerated"})`,
+                      );
+                    }}
+                    className={`rounded-lg px-2 py-0.5 text-[11px] font-black transition ${
+                      speedMultiplier === spd
+                        ? "bg-primary text-white shadow-xs"
+                        : "text-slate-600 hover:text-foreground"
+                    }`}
+                  >
+                    {spd}x
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Current & Next Stop row */}
-            <div className="rounded-xl bg-tint p-3 space-y-1">
+            {/* Real-time Arrival Countdown Header */}
+            <div className="rounded-2xl bg-gradient-to-r from-primary/10 via-purple-100/40 to-primary/5 p-3.5 border border-primary/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Destination Arrival Countdown
+                  </span>
+                  <div className="text-2xl font-black text-primary tracking-tight">
+                    {formatCountdown(liveState.totalRemainingSec)}
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-0.5 text-[11px] font-extrabold text-emerald-800 border border-emerald-300">
+                    <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    {trafficData?.badgeText ?? "On Time"}
+                  </span>
+                  <p className="mt-1 text-xs font-bold text-foreground">
+                    {liveState.stopsRemaining} stops remaining
+                  </p>
+                </div>
+              </div>
+
+              {/* Google Maps style Blue Progress Bar */}
+              <div className="mt-3">
+                <div className="flex items-center justify-between text-[11px] mb-1">
+                  <span className="font-semibold text-muted-foreground">Route Progress</span>
+                  <span className="font-bold text-primary">
+                    {liveState.progressPercent.toFixed(1)}% complete
+                  </span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className="h-full bg-primary transition-all duration-300 ease-out"
+                    style={{ width: `${Math.min(100, liveState.progressPercent)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Current & Next Stop Live Card */}
+            <div className="rounded-xl bg-white p-3 border border-border space-y-2 shadow-2xs">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground flex items-center gap-1.5 font-semibold">
                   <span className="size-2 rounded-full bg-primary animate-ping" /> Current Stop:
@@ -919,53 +988,92 @@ function RouteDetailsPage() {
               </div>
 
               {nextLiveStop && (
-                <div className="flex items-center justify-between text-xs pt-1 border-t border-border/60">
-                  <span className="text-muted-foreground">Next Stop:</span>
-                  <span className="font-bold text-primary">{nextLiveStop.name}</span>
+                <div className="flex items-center justify-between text-xs pt-1.5 border-t border-border/60">
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <Navigation className="size-3 text-primary" /> Next Stop:
+                  </span>
+                  <div className="text-right">
+                    <span className="font-bold text-primary">{nextLiveStop.name}</span>
+                    <span className="ml-2 rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-extrabold text-primary">
+                      in {formatCountdown(liveState.nextStopRemainingSec)}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Travel stats bar (Scheduled ETA vs Live Traffic ETA - Requirement 3) */}
-            <div className="grid grid-cols-3 gap-2 border-t border-border pt-3 text-center">
+            {/* Dynamic Travel Stats */}
+            <div className="grid grid-cols-3 gap-2 rounded-xl bg-tint p-2.5 text-center text-xs">
               <div>
                 <p className="text-[10px] font-bold uppercase text-muted-foreground">
-                  Scheduled ETA
+                  Distance Left
                 </p>
-                <p className="text-xs font-bold text-foreground">~{liveState.etaMinutes} min</p>
-                <p className="text-[9px] text-muted-foreground">GTFS Schedule</p>
+                <p className="font-extrabold text-foreground">
+                  {formatDistance(liveState.remainingMeters)}
+                </p>
               </div>
               <div className="border-x border-border">
-                <p className="text-[10px] font-bold uppercase text-muted-foreground">
-                  Live Traffic ETA
-                </p>
-                <p className="text-xs font-black text-primary">
-                  ~
-                  {mode === "live" && trafficData?.isAvailable
-                    ? trafficData.liveETAMinutes
-                    : liveState.etaMinutes}{" "}
-                  min
-                </p>
-                <p className="text-[9px] text-muted-foreground">
-                  {mode === "demo"
-                    ? "Simulated"
-                    : trafficData?.isAvailable
-                      ? "Google Routes"
-                      : "Fallback"}
-                </p>
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">Destination</p>
+                <p className="font-extrabold truncate text-primary">{destStop.name}</p>
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase text-muted-foreground">Destination</p>
-                <p className="text-xs font-bold truncate text-foreground">
-                  {journey.destination_stop.name}
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                  Walk at Dest
                 </p>
-                <p className="text-[9px] text-muted-foreground">
-                  {liveState.stopsRemaining} stops left
+                <p className="font-extrabold text-foreground">
+                  {walkToDestM !== null ? formatWalk(walkToDestM) : "At stop"}
                 </p>
               </div>
             </div>
 
-            {/* Action buttons */}
+            {/* Smart Stop Alarm Controls */}
+            <div className="rounded-xl bg-purple-50/70 p-3 border border-primary/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
+                  <BellRing className="size-4 animate-bounce text-primary" />
+                  <span>Smart Stop Alarm</span>
+                </div>
+                <span className="text-[11px] font-semibold text-muted-foreground">
+                  {alarmTriggerMode === "2_stops"
+                    ? "Rings 2 stops before destination"
+                    : alarmTriggerMode === "1_stop"
+                      ? "Rings 1 stop before destination"
+                      : alarmTriggerMode === "500m"
+                        ? "Rings within 500m"
+                        : "Rings within 250m"}
+                </span>
+              </div>
+
+              {/* Alarm mode selection chips */}
+              <div className="grid grid-cols-4 gap-1.5 pt-1">
+                {(
+                  [
+                    { id: "2_stops", label: "2 Stops" },
+                    { id: "1_stop", label: "1 Stop" },
+                    { id: "500m", label: "500 m" },
+                    { id: "250m", label: "250 m" },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      setAlarmTriggerMode(opt.id);
+                      toast.info(`Alarm trigger set to ${opt.label} before destination.`);
+                    }}
+                    className={`rounded-lg py-1 text-[11px] font-bold transition text-center ${
+                      alarmTriggerMode === opt.id
+                        ? "bg-primary text-white shadow-xs"
+                        : "bg-white text-muted-foreground border border-border hover:text-foreground"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Action buttons: Pause Tracking / Exit Journey */}
             <div className="flex items-center gap-2 pt-1">
               <button
                 type="button"
@@ -994,51 +1102,9 @@ function RouteDetailsPage() {
           </div>
         ) : (
           /* ========================================================================= */
-          /* START JOURNEY PANEL (Mode Selection, Boarding/Dest Pickers)               */
+          /* START JOURNEY PANEL (Boarding/Dest Pickers & Primary Start Button)        */
           /* ========================================================================= */
           <div className="trako-card p-4 space-y-3.5 border border-border">
-            {/* Journey Mode Tabs (DEMO vs LIVE) */}
-            <div>
-              <label className="text-[11px] font-bold text-muted-foreground block mb-1.5">
-                Journey Mode
-              </label>
-              <div className="grid grid-cols-2 gap-2 rounded-xl bg-tint p-1">
-                <button
-                  type="button"
-                  onClick={() => setJourneyMode("demo")}
-                  className={`flex flex-col items-center justify-center rounded-lg py-2 px-1 text-center transition ${
-                    journeyMode === "demo"
-                      ? "bg-white text-primary font-black shadow-xs ring-1 ring-primary/20"
-                      : "text-muted-foreground font-semibold hover:text-foreground"
-                  }`}
-                >
-                  <span className="flex items-center gap-1 text-xs">
-                    <Zap className="size-3.5 text-amber-500 fill-amber-500" /> DEMO MODE
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    ~100s compressed simulation
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setJourneyMode("live")}
-                  className={`flex flex-col items-center justify-center rounded-lg py-2 px-1 text-center transition ${
-                    journeyMode === "live"
-                      ? "bg-white text-primary font-black shadow-xs ring-1 ring-primary/20"
-                      : "text-muted-foreground font-semibold hover:text-foreground"
-                  }`}
-                >
-                  <span className="flex items-center gap-1 text-xs">
-                    <Clock className="size-3.5 text-blue-600" /> LIVE MODE
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    Real-time GTFS schedule ({timingProfile?.totalDurationMins ?? 41}m)
-                  </span>
-                </button>
-              </div>
-            </div>
-
             {/* Boarding and Destination Selectors */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
@@ -1082,24 +1148,17 @@ function RouteDetailsPage() {
               </div>
             </div>
 
-            {/* Google Routes Traffic Preview in Live Mode */}
-            {journeyMode === "live" && (
-              <div className="rounded-xl bg-purple-50/70 p-2.5 text-xs text-foreground flex items-center justify-between border border-purple-100">
-                <div className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-primary animate-ping" />
-                  <span className="font-semibold text-muted-foreground">
-                    Google Traffic Preview:
-                  </span>
-                </div>
-                <span className="font-extrabold text-primary">
-                  {isTrafficLoading
-                    ? "Checking live traffic…"
-                    : trafficData?.isAvailable
-                      ? `${trafficData.badgeText} • ~${trafficData.liveETAMinutes} min`
-                      : `On Time • ~${timingProfile?.totalDurationMins ?? 41} min`}
-                </span>
+            {/* Travel Duration & Live Traffic Preview */}
+            <div className="rounded-xl bg-purple-50/70 p-2.5 text-xs text-foreground flex items-center justify-between border border-purple-100">
+              <div className="flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-primary animate-ping" />
+                <span className="font-semibold text-muted-foreground">Scheduled Duration:</span>
               </div>
-            )}
+              <span className="font-extrabold text-primary">
+                ~{timingProfile?.totalDurationMins ?? 41} mins (
+                {timingProfile?.subStops.length ?? totalStops} stops)
+              </span>
+            </div>
 
             {/* Start Journey Primary Button */}
             <button
@@ -1108,7 +1167,7 @@ function RouteDetailsPage() {
               className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-extrabold text-white shadow-md transition hover:bg-primary/95 active:scale-98"
             >
               <Navigation className="size-4 fill-white" />
-              Start Journey ({journeyMode === "demo" ? "Demo Mode ~100s" : "Live Mode"})
+              Start Live Journey
             </button>
           </div>
         )}
@@ -1186,7 +1245,7 @@ function RouteDetailsPage() {
                         {isPassedInJourney ? <CheckCircle2 className="size-3.5" /> : item.seq}
                       </div>
 
-                      {/* Purple vertical line connecting to next stop */}
+                      {/* Vertical line connecting to next stop */}
                       {idx < stopTimes.length - 1 && (
                         <div
                           className={`w-0.5 my-1 min-h-[30px] rounded-full ${
@@ -1255,7 +1314,8 @@ function RouteDetailsPage() {
 
                       {isCurrentInJourney && (
                         <div className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-primary px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
-                          <Bus className="size-3" /> Bus is here now
+                          <Bus className="size-3" /> Bus is here now (
+                          {formatCountdown(liveState.nextStopRemainingSec)} to next)
                         </div>
                       )}
 
@@ -1349,54 +1409,118 @@ function RouteDetailsPage() {
               <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
                 Origin Departures from {route.origin}
               </p>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {timetable[timetableTab].map((time, idx) => (
+              <div className="grid grid-cols-4 gap-2">
+                {routeData.timetable[timetableTab]?.map((time, idx) => (
                   <div
                     key={idx}
-                    className="rounded-lg border border-border bg-tint/40 p-2 text-center text-xs font-semibold text-foreground hover:border-primary/40 transition"
+                    className="flex flex-col items-center justify-center rounded-xl bg-tint p-2 text-center border border-border/60"
                   >
-                    {time}
+                    <span className="text-xs font-bold text-foreground">{formatClock(time)}</span>
                   </div>
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+      )}
 
-            <div className="mt-4 border-t border-border pt-3">
+      {/* ========================================================================= */}
+      {/* 6. EXIT JOURNEY CONFIRMATION MODAL                                        */}
+      {/* ========================================================================= */}
+      {showExitConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-sm rounded-3xl bg-card p-5 shadow-2xl border border-border space-y-3">
+            <h3 className="text-base font-extrabold text-foreground">Exit Active Journey?</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Are you sure you want to exit tracking for Route {route.route_no}? Your journey
+              progress will be saved to Recent Trips.
+            </p>
+            <div className="flex gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setShowTimetable(false)}
-                className="w-full rounded-xl bg-primary py-2.5 text-xs font-bold text-white shadow-xs"
+                onClick={() => setShowExitConfirm(false)}
+                className="flex-1 rounded-xl border border-input bg-card py-2.5 text-xs font-bold text-foreground hover:bg-tint transition"
               >
-                Close Timetable
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExitJourney}
+                className="flex-1 rounded-xl bg-destructive py-2.5 text-xs font-bold text-destructive-foreground shadow-sm hover:bg-destructive/90 transition"
+              >
+                Exit Journey
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Confirmation Modal to Exit Journey */}
-      {showExitConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-2xl">
-            <h3 className="text-base font-bold text-foreground">Exit Journey?</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Are you sure you want to stop live tracking? Your journey progress will be saved to
-              your recent trips.
-            </p>
-            <div className="mt-4 flex gap-2">
+      {/* ========================================================================= */}
+      {/* 7. JOURNEY COMPLETION CELEBRATION MODAL (Requirement 7)                    */}
+      {/* ========================================================================= */}
+      {completedSummary && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-full max-w-sm rounded-3xl bg-card p-6 shadow-2xl border border-border text-center space-y-4">
+            <div className="mx-auto grid size-16 place-items-center rounded-3xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-lg animate-bounce">
+              <CheckCircle2 className="size-9 text-white" />
+            </div>
+
+            <div>
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-800 border border-emerald-300">
+                🎉 YOU&apos;VE ARRIVED!
+              </span>
+              <h3 className="mt-2 text-lg font-black text-foreground">
+                {completedSummary.destination_stop.name}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Bus {completedSummary.route_no} • From {completedSummary.boarding_stop.name}
+              </p>
+            </div>
+
+            {/* Travel Metrics Grid */}
+            <div className="grid grid-cols-3 gap-2 rounded-2xl bg-tint p-3 text-center">
+              <div>
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                  Journey Time
+                </p>
+                <p className="text-sm font-black text-foreground">
+                  {Math.round(completedSummary.duration_seconds / 60)} min
+                </p>
+              </div>
+              <div className="border-x border-border">
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">Distance</p>
+                <p className="text-sm font-black text-primary">
+                  {formatDistance(completedSummary.total_distance_meters ?? 14200)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">Fare</p>
+                <p className="text-sm font-black text-emerald-600">
+                  {completedSummary.fare_paid ?? "₹20"}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-purple-50 p-2.5 text-[11px] text-primary font-bold flex items-center justify-center gap-1.5 border border-purple-100">
+              <Sparkles className="size-3.5" />
+              <span>Trip automatically saved to your My Trips history</span>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-1">
+              <Link
+                to="/trips"
+                onClick={() => setCompletedSummary(null)}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-xs font-black uppercase tracking-wider text-white shadow-md hover:bg-primary/95 transition active:scale-98"
+              >
+                View in My Trips
+              </Link>
+
               <button
                 type="button"
-                onClick={() => setShowExitConfirm(false)}
-                className="flex-1 rounded-xl border border-input py-2 text-xs font-semibold text-foreground hover:bg-tint"
+                onClick={() => setCompletedSummary(null)}
+                className="w-full rounded-xl border border-input py-2.5 text-xs font-bold text-foreground hover:bg-tint transition active:scale-98"
               >
-                Stay in Journey
-              </button>
-              <button
-                type="button"
-                onClick={handleExitJourney}
-                className="flex-1 rounded-xl bg-destructive py-2 text-xs font-semibold text-white shadow-sm hover:bg-destructive/90"
-              >
-                Yes, Exit
+                Close
               </button>
             </div>
           </div>

@@ -101,6 +101,20 @@ export function extractSubPolyline(
   }
 }
 
+export function calculateBearing(start: LatLng, end: LatLng): number {
+  const startLat = (start.lat * Math.PI) / 180;
+  const startLng = (start.lon * Math.PI) / 180;
+  const endLat = (end.lat * Math.PI) / 180;
+  const endLng = (end.lon * Math.PI) / 180;
+
+  const y = Math.sin(endLng - startLng) * Math.cos(endLat);
+  const x =
+    Math.cos(startLat) * Math.sin(endLat) -
+    Math.sin(startLat) * Math.cos(endLat) * Math.cos(endLng - startLng);
+  const brng = (Math.atan2(y, x) * 180) / Math.PI;
+  return (brng + 360) % 360;
+}
+
 export function interpolatePolyline(
   points: [number, number][],
   fraction: number,
@@ -108,25 +122,36 @@ export function interpolatePolyline(
   point: LatLng;
   completed: [number, number][];
   remaining: [number, number][];
+  bearing: number;
 } {
   const clampedFraction = Math.max(0, Math.min(1, fraction));
   if (points.length === 0) {
-    return { point: { lat: 0, lon: 0 }, completed: [], remaining: [] };
+    return { point: { lat: 0, lon: 0 }, completed: [], remaining: [], bearing: 0 };
   }
   if (points.length === 1 || clampedFraction === 0) {
     const p = points[0]!;
+    const next = points[1];
+    const bearing = next
+      ? calculateBearing({ lat: p[1], lon: p[0] }, { lat: next[1], lon: next[0] })
+      : 0;
     return {
       point: { lon: p[0], lat: p[1] },
       completed: [p],
       remaining: points,
+      bearing,
     };
   }
   if (clampedFraction === 1) {
     const p = points[points.length - 1]!;
+    const prev = points[points.length - 2];
+    const bearing = prev
+      ? calculateBearing({ lat: prev[1], lon: prev[0] }, { lat: p[1], lon: p[0] })
+      : 0;
     return {
       point: { lon: p[0], lat: p[1] },
       completed: points,
       remaining: [p],
+      bearing,
     };
   }
 
@@ -142,7 +167,7 @@ export function interpolatePolyline(
 
   if (totalMeters === 0) {
     const p = points[0]!;
-    return { point: { lon: p[0], lat: p[1] }, completed: [p], remaining: points };
+    return { point: { lon: p[0], lat: p[1] }, completed: [p], remaining: points, bearing: 0 };
   }
 
   const targetMeters = clampedFraction * totalMeters;
@@ -160,11 +185,13 @@ export function interpolatePolyline(
 
       const completed = [...points.slice(0, i + 1), curPoint];
       const remaining = [curPoint, ...points.slice(i + 1)];
+      const bearing = calculateBearing({ lat: a[1], lon: a[0] }, { lat: b[1], lon: b[0] });
 
       return {
         point: { lon: curLon, lat: curLat },
         completed,
         remaining,
+        bearing,
       };
     }
     accumulated += segLen;
@@ -175,5 +202,6 @@ export function interpolatePolyline(
     point: { lon: last[0], lat: last[1] },
     completed: points,
     remaining: [last],
+    bearing: 0,
   };
 }

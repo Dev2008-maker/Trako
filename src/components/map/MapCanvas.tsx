@@ -6,7 +6,7 @@ if (typeof window !== "undefined") {
   maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs");
 }
 import { useQuery } from "@tanstack/react-query";
-import { LocateFixed, Radio } from "lucide-react";
+import { LocateFixed, Navigation, Radio } from "lucide-react";
 import { getMapConfig } from "@/lib/maptiler.functions";
 import { PUNE_CENTER } from "@/lib/geo";
 import type { MapViewProps } from "./types";
@@ -36,6 +36,8 @@ export default function MapCanvas({
   isDemoMode = false,
   onToggleDemoMode,
   pickupPointLabel = "Pickup Point",
+  followBus = false,
+  onToggleFollowBus,
 }: MapViewProps) {
   const holder = useRef<HTMLDivElement | null>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -106,12 +108,20 @@ export default function MapCanvas({
   useEffect(() => {
     if (!ready || !map.current || !center || fitBounds) return;
     const bottom = getBottomCameraPadding(Boolean(user || onToggleDemoMode));
-    map.current.easeTo({
-      center: [center.lon, center.lat],
-      padding: { top: 20, bottom, left: 20, right: 20 },
-      duration: 600,
-    });
-  }, [ready, center, fitBounds, user, onToggleDemoMode]);
+    if (followBus) {
+      map.current.easeTo({
+        center: [center.lon, center.lat],
+        padding: { top: 40, bottom: Math.min(bottom, 220), left: 20, right: 20 },
+        duration: 350,
+      });
+    } else {
+      map.current.easeTo({
+        center: [center.lon, center.lat],
+        padding: { top: 20, bottom, left: 20, right: 20 },
+        duration: 600,
+      });
+    }
+  }, [ready, center, fitBounds, user, onToggleDemoMode, followBus]);
 
   // react to bottom sheet dragging & snapping
   useEffect(() => {
@@ -212,7 +222,7 @@ export default function MapCanvas({
     }
   }, [ready, stops, selectedStopId, boardingStopId, destinationStopId, showIntermediateStops]);
 
-  // buses (animate between updates)
+  // buses (animate between updates with direction rotation)
   useEffect(() => {
     if (!ready || !map.current) return;
     const seen = new Set<string>();
@@ -221,18 +231,31 @@ export default function MapCanvas({
       let marker = busMarkers.current.get(bus.id);
       if (!marker) {
         const el = document.createElement("div");
-        marker = new maplibregl.Marker({ element: el })
+        marker = new maplibregl.Marker({ element: el, anchor: "center" })
           .setLngLat([bus.lon, bus.lat])
           .addTo(map.current);
         busMarkers.current.set(bus.id, marker);
       }
       const el = marker.getElement();
-      el.className = `trako-bus ${bus.status === "live" ? "trako-bus-live" : "trako-bus-stale"}`;
-      el.textContent = bus.label;
+      el.className = "trako-bus-marker-container";
+      const bearing = bus.bearing ?? 0;
+      el.innerHTML = `
+        <div class="trako-bus-wrapper">
+          <div class="trako-bus-arrow" style="transform: rotate(${bearing}deg)">
+            <div class="trako-bus-arrow-head"></div>
+          </div>
+          <div class="trako-bus-bubble ${bus.status === "live" ? "trako-bus-live" : "trako-bus-stale"}">
+            <svg class="trako-bus-icon" viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+              <path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
+            </svg>
+            <span class="trako-bus-label">${bus.label}</span>
+          </div>
+        </div>
+      `;
       if (bus.isDemo) el.dataset["demo"] = "true";
       const [lng, lat] = marker.getLngLat().toArray();
       if (Math.abs(lng - bus.lon) > 1e-6 || Math.abs(lat - bus.lat) > 1e-6) {
-        animateMarker(marker, [lng, lat], [bus.lon, bus.lat]);
+        animateMarker(marker, [lng, lat], [bus.lon, bus.lat], 600);
       }
     }
     for (const [id, marker] of busMarkers.current) {
@@ -376,6 +399,23 @@ export default function MapCanvas({
         </button>
       )}
 
+      {/* Follow Bus button on TOP-LEFT when available */}
+      {!hideControls && onToggleFollowBus && (
+        <button
+          type="button"
+          onClick={onToggleFollowBus}
+          aria-label={followBus ? "Disable camera following bus" : "Enable camera following bus"}
+          className={`absolute left-4 top-4 z-20 flex items-center gap-1.5 rounded-full px-3 py-1.5 shadow-md ring-1 text-xs font-bold transition-all active:scale-95 ${
+            followBus
+              ? "bg-primary text-white ring-primary/40 shadow-primary/20"
+              : "bg-white/95 text-foreground ring-slate-200/80 hover:bg-white"
+          }`}
+        >
+          <Navigation className={`size-3.5 ${followBus ? "fill-white animate-pulse" : ""}`} />
+          <span>{followBus ? "Following Bus" : "Follow Bus"}</span>
+        </button>
+      )}
+
       {/* Floating Demo Mode badge on TOP-RIGHT */}
       {!hideControls && onToggleDemoMode && (
         <button
@@ -514,8 +554,73 @@ const markerStyles = `
 .trako-stop-destination { position:relative; width:16px; height:16px; border-radius:9999px; background:#ef4444; border:3px solid #fff; box-shadow:0 0 0 3px rgba(239, 68, 68, 0.4); cursor:pointer; padding:0; }
 .trako-pin-badge { position:absolute; bottom:18px; left:50%; transform:translateX(-50%); background:#10b981; color:#fff; font-family:"DM Sans", sans-serif; font-size:10px; font-weight:700; padding:2px 7px; border-radius:6px; white-space:nowrap; pointer-events:none; box-shadow:0 2px 6px rgba(0,0,0,0.25); line-height:1.2; }
 .trako-pin-badge-red { background:#ef4444 !important; }
-.trako-bus { display:grid; place-items:center; min-width:38px; height:26px; padding:0 8px; border-radius:9999px; font:600 12px/1 "DM Sans", sans-serif; color:#fff; white-space:nowrap; }
-.trako-bus-live { background:#BF00FF; box-shadow:0 0 0 4px oklch(0.62 0.31 317 / 0.22); }
-.trako-bus-stale { background:#B39EB5; }
+.trako-bus-marker-container {
+  position: relative;
+  width: 0;
+  height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.trako-bus-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.trako-bus-arrow {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  top: -22px;
+  left: -22px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  pointer-events: none;
+  transition: transform 0.2s linear;
+}
+.trako-bus-arrow-head {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 9px solid #800080;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+}
+.trako-bus-bubble {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: #800080;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  box-shadow: 0 3px 10px rgba(128, 0, 128, 0.4), 0 1px 3px rgba(0, 0, 0, 0.2);
+  font-family: "DM Sans", sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
+  transform: translateZ(0);
+}
+.trako-bus-live {
+  background: linear-gradient(135deg, #800080 0%, #600060 100%);
+}
+.trako-bus-stale {
+  background: #64748b;
+}
+.trako-bus-icon {
+  flex-shrink: 0;
+}
+.trako-bus-label {
+  letter-spacing: -0.02em;
+}
 .trako-destination { width:0; height:0; border-left:8px solid transparent; border-right:8px solid transparent; border-bottom:18px solid #800080; }
 `;
