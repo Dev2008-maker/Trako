@@ -1,0 +1,5 @@
+{
+  "name": "Trako",
+  "description": "Pune bus stops, schedules and passenger-powered live PMPML buses.",
+  "requestFramePermissions": ["geolocation"]
+}

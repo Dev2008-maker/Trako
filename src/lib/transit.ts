@@ -124,7 +124,13 @@ export function upcomingAtStopQuery(stopId: string | undefined) {
             id: string;
             bus_id: string | null;
             direction: number;
-            routes: { id: string; route_no: string; name: string; destination: string; origin: string };
+            routes: {
+              id: string;
+              route_no: string;
+              name: string;
+              destination: string;
+              origin: string;
+            };
           } | null;
         }>
       >(
@@ -172,9 +178,7 @@ export function routeDetailQuery(routeId: string | undefined) {
           .eq("id", routeId!)
           .limit(1),
       );
-      const stops = await unwrap<
-        Array<{ seq: number; direction: number; stops: Stop }>
-      >(
+      const stops = await unwrap<Array<{ seq: number; direction: number; stops: Stop }>>(
         supabase
           .from("route_stops")
           .select("seq, direction, stops!inner(id, code, name, area, lat, lon)")
@@ -188,7 +192,10 @@ export function routeDetailQuery(routeId: string | undefined) {
           .select("coordinates")
           .eq("route_id", routeId!)
           .eq("direction", 0)
-          .limit(1) as unknown as PromiseLike<{ data: { coordinates: [number, number][] }[] | null; error: { message: string } | null }>,
+          .limit(1) as unknown as PromiseLike<{
+          data: { coordinates: [number, number][] }[] | null;
+          error: { message: string } | null;
+        }>,
       );
       return {
         route: route ?? null,
@@ -225,11 +232,19 @@ export function routesBetweenQuery(boardingIds: string[], destinationId: string 
       >(
         supabase
           .from("route_stops")
-          .select("route_id, stop_id, seq, direction, routes!inner(id, route_no, name, origin, destination)")
+          .select(
+            "route_id, stop_id, seq, direction, routes!inner(id, route_no, name, origin, destination)",
+          )
           .in("stop_id", [...boardingIds, destinationId!]),
       );
 
-      type Match = { route: Route; direction: number; boardingStopId: string; boardSeq: number; destSeq: number };
+      type Match = {
+        route: Route;
+        direction: number;
+        boardingStopId: string;
+        boardSeq: number;
+        destSeq: number;
+      };
       const matches: Match[] = [];
       const grouped = new Map<string, typeof rows>();
       for (const row of rows) {

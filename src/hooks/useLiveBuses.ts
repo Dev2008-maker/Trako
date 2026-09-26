@@ -11,13 +11,9 @@ export function useLiveBuses() {
   useEffect(() => {
     const channel = supabase
       .channel("bus-locations-feed")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "bus_locations" },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["live-pings"] });
-        },
-      )
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "bus_locations" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["live-pings"] });
+      })
       .subscribe();
 
     return () => {

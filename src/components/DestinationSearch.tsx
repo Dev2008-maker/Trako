@@ -41,7 +41,11 @@ export function DestinationSearch({
       .slice(0, 4);
   }, [debounced, stops]);
 
-  const { data: places = [], isFetching, isError } = useQuery({
+  const {
+    data: places = [],
+    isFetching,
+    isError,
+  } = useQuery({
     queryKey: ["places", debounced],
     enabled: debounced.length >= 2,
     staleTime: 5 * 60_000,
@@ -91,7 +95,13 @@ export function DestinationSearch({
               <button
                 type="button"
                 onClick={() =>
-                  onSelect({ name: stop.name, context: stop.area ?? "Bus stop", lat: stop.lat, lon: stop.lon, stopId: stop.id })
+                  onSelect({
+                    name: stop.name,
+                    context: stop.area ?? "Bus stop",
+                    lat: stop.lat,
+                    lon: stop.lon,
+                    stopId: stop.id,
+                  })
                 }
                 className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
               >
@@ -101,7 +111,9 @@ export function DestinationSearch({
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-semibold">{stop.name}</span>
                   {stop.area && (
-                    <span className="block truncate text-xs text-muted-foreground">{stop.area}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {stop.area}
+                    </span>
                   )}
                 </span>
               </button>
@@ -111,14 +123,23 @@ export function DestinationSearch({
             <li key={place.id}>
               <button
                 type="button"
-                onClick={() => onSelect({ name: place.name, context: place.context, lat: place.lat, lon: place.lon })}
+                onClick={() =>
+                  onSelect({
+                    name: place.name,
+                    context: place.context,
+                    lat: place.lat,
+                    lon: place.lon,
+                  })
+                }
                 className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
               >
                 <MapPin className="size-4 shrink-0 text-muted-foreground" />
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-semibold">{place.name}</span>
                   {place.context && (
-                    <span className="block truncate text-xs text-muted-foreground">{place.context}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {place.context}
+                    </span>
                   )}
                 </span>
               </button>

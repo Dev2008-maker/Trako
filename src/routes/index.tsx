@@ -55,10 +55,7 @@ function Home() {
 
   const boardingIds = useMemo(() => near.slice(0, 3).map((n) => n.stop.id), [near]);
   const { data: matches = [] } = useQuery(
-    routesBetweenQuery(
-      boardingIds,
-      destination?.stopId ?? nearestStopIdTo(stops, destination),
-    ),
+    routesBetweenQuery(boardingIds, destination?.stopId ?? nearestStopIdTo(stops, destination)),
   );
 
   const busMarkers = useMemo<BusMarkerData[]>(() => {
@@ -185,19 +182,23 @@ function Home() {
                   >
                     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                       <div className="min-w-0">
-                        <p className="font-display text-base font-bold">BUS {match.route.route_no}</p>
+                        <p className="font-display text-base font-bold">
+                          BUS {match.route.route_no}
+                        </p>
                         <p className="truncate text-xs text-muted-foreground">{match.route.name}</p>
                       </div>
                       <LiveStatusBadge status="scheduled" />
                     </div>
                     <p className="mt-2 text-sm">
-                      Board at <span className="font-semibold">{boarding?.name ?? "nearby stop"}</span>
+                      Board at{" "}
+                      <span className="font-semibold">{boarding?.name ?? "nearby stop"}</span>
                       {walkMeters !== undefined && (
                         <span className="text-muted-foreground"> · {formatWalk(walkMeters)}</span>
                       )}
                     </p>
                     <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Bus className="size-3.5" /> {match.destSeq - match.boardSeq} stops to your destination
+                      <Bus className="size-3.5" /> {match.destSeq - match.boardSeq} stops to your
+                      destination
                     </p>
                   </Link>
                 );

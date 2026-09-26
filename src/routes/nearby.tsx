@@ -14,7 +14,8 @@ export const Route = createFileRoute("/nearby")({
       { title: "Nearby bus stops in Pune — Trako" },
       {
         name: "description",
-        content: "The closest PMPML bus stops to you, sorted by walking distance, with upcoming buses.",
+        content:
+          "The closest PMPML bus stops to you, sorted by walking distance, with upcoming buses.",
       },
       { property: "og:title", content: "Nearby bus stops in Pune — Trako" },
       {
@@ -39,7 +40,11 @@ function Nearby() {
       <div className="h-56 overflow-hidden rounded-2xl">
         <MapView
           className="size-full"
-          center={selectedStop ? { lat: selectedStop.lat, lon: selectedStop.lon } : (coords ?? PUNE_CENTER)}
+          center={
+            selectedStop
+              ? { lat: selectedStop.lat, lon: selectedStop.lon }
+              : (coords ?? PUNE_CENTER)
+          }
           user={coords}
           stops={near.map((n) => n.stop)}
           selectedStopId={selected}

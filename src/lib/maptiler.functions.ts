@@ -16,22 +16,24 @@ export type MapConfig = {
 };
 
 /** A dependable street-map style. Place search can still use MapTiler when configured. */
-export const getMapConfig = createServerFn({ method: "GET" }).handler(async (): Promise<MapConfig> => {
-  return {
-    style: {
-      version: 8,
-      sources: {
-        streets: {
-          type: "raster",
-          tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-          tileSize: 256,
-          attribution: "© OpenStreetMap contributors",
+export const getMapConfig = createServerFn({ method: "GET" }).handler(
+  async (): Promise<MapConfig> => {
+    return {
+      style: {
+        version: 8,
+        sources: {
+          streets: {
+            type: "raster",
+            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            tileSize: 256,
+            attribution: "© OpenStreetMap contributors",
+          },
         },
+        layers: [{ id: "streets", type: "raster", source: "streets" }],
       },
-      layers: [{ id: "streets", type: "raster", source: "streets" }],
-    },
-  };
-});
+    };
+  },
+);
 
 export type PlaceResult = {
   id: string;
@@ -43,15 +45,15 @@ export type PlaceResult = {
 
 /** Place / area / landmark search around Pune. */
 export const searchPlaces = createServerFn({ method: "GET" })
-  .inputValidator((input: { query: string }) => ({ query: String(input.query ?? "").slice(0, 120) }))
+  .inputValidator((input: { query: string }) => ({
+    query: String(input.query ?? "").slice(0, 120),
+  }))
   .handler(async ({ data }): Promise<PlaceResult[]> => {
     const key = process.env["MAPTILER_API_KEY"];
     const q = data.query.trim();
     if (!key || q.length < 2) return [];
 
-    const url = new URL(
-      `https://api.maptiler.com/geocoding/${encodeURIComponent(q)}.json`,
-    );
+    const url = new URL(`https://api.maptiler.com/geocoding/${encodeURIComponent(q)}.json`);
     url.searchParams.set("key", key);
     url.searchParams.set("country", "in");
     url.searchParams.set("proximity", "73.8567,18.5204");

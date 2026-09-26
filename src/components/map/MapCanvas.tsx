@@ -81,7 +81,9 @@ export default function MapCanvas({
     el.className = "trako-user-dot";
     el.innerHTML = `<span class="trako-user-ring"></span><span class="trako-user-core"></span>`;
     if (!userMarker.current) {
-      userMarker.current = new maplibregl.Marker({ element: el }).setLngLat([user.lon, user.lat]).addTo(map.current);
+      userMarker.current = new maplibregl.Marker({ element: el })
+        .setLngLat([user.lon, user.lat])
+        .addTo(map.current);
     } else {
       userMarker.current.setLngLat([user.lon, user.lat]);
     }
@@ -103,7 +105,9 @@ export default function MapCanvas({
           event.stopPropagation();
           clickHandler.current?.(stop.id);
         });
-        marker = new maplibregl.Marker({ element: el }).setLngLat([stop.lon, stop.lat]).addTo(map.current);
+        marker = new maplibregl.Marker({ element: el })
+          .setLngLat([stop.lon, stop.lat])
+          .addTo(map.current);
         stopMarkers.current.set(stop.id, marker);
       } else {
         marker.setLngLat([stop.lon, stop.lat]);
@@ -127,7 +131,9 @@ export default function MapCanvas({
       let marker = busMarkers.current.get(bus.id);
       if (!marker) {
         const el = document.createElement("div");
-        marker = new maplibregl.Marker({ element: el }).setLngLat([bus.lon, bus.lat]).addTo(map.current);
+        marker = new maplibregl.Marker({ element: el })
+          .setLngLat([bus.lon, bus.lat])
+          .addTo(map.current);
         busMarkers.current.set(bus.id, marker);
       }
       const el = marker.getElement();

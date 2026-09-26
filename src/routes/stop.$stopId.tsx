@@ -13,7 +13,8 @@ export const Route = createFileRoute("/stop/$stopId")({
       { title: "Bus stop schedule — Trako" },
       {
         name: "description",
-        content: "Upcoming PMPML buses at this Pune bus stop, with scheduled times and live status.",
+        content:
+          "Upcoming PMPML buses at this Pune bus stop, with scheduled times and live status.",
       },
       { property: "og:title", content: "Bus stop schedule — Trako" },
       {

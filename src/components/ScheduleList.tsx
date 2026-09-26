@@ -28,9 +28,7 @@ export function ScheduleList({
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
               <div className="min-w-0">
                 <p className="font-display text-base font-bold">BUS {bus.routeNo}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  Towards {bus.destination}
-                </p>
+                <p className="truncate text-xs text-muted-foreground">Towards {bus.destination}</p>
               </div>
               <LiveStatusBadge status={status} demo={ping?.is_demo} />
             </div>
@@ -41,9 +39,7 @@ export function ScheduleList({
                   {bus.minutesAway <= 1 ? "Arriving now" : `ETA ${bus.minutesAway} min`}
                 </span>
               ) : (
-                <span className="font-semibold">
-                  Scheduled {formatClock(bus.scheduledTime)}
-                </span>
+                <span className="font-semibold">Scheduled {formatClock(bus.scheduledTime)}</span>
               )}
               {status === "last_seen" && ping && (
                 <span className="text-xs text-stale">Last seen {formatAgo(ping.recorded_at)}</span>
