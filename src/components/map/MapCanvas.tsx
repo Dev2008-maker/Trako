@@ -280,8 +280,17 @@ export default function MapCanvas({
       setIsFollowingBus(false);
     });
 
+    // Auto-resize map when viewport/container dimensions change (e.g. mobile orientation)
+    const resizeObserver = new ResizeObserver(() => {
+      instance.resize();
+    });
+    if (holder.current) {
+      resizeObserver.observe(holder.current);
+    }
+
     map.current = instance;
     return () => {
+      resizeObserver.disconnect();
       instance.remove();
       map.current = null;
       setReady(false);
@@ -794,12 +803,23 @@ export default function MapCanvas({
   }
 
   return (
-    <div className={`relative w-full h-full overflow-hidden select-none ${className}`}>
+    <div
+      className={`trako-map-wrapper relative w-full h-[60vh] max-h-[60dvh] sm:h-[65vh] sm:max-h-[65dvh] lg:h-full lg:max-h-full overflow-hidden select-none ${className}`}
+    >
       <div
         ref={holder}
         className={`trako-map-canvas !absolute inset-0 size-full transition-opacity duration-500 ${ready ? "opacity-100" : "opacity-0"}`}
       />
       {!ready && <div className="absolute inset-0 animate-pulse bg-muted/30" />}
+
+      {/* Vertical gradient overlay: Map slowly disappears underneath the sheet (Requirement 2) */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-28 sm:h-36 z-10"
+        style={{
+          background:
+            "linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.35) 45%, #FFFFFF 100%)",
+        }}
+      />
 
       {/* Floating Camera Controls Stack (Requirement 5: Recenter Me, Follow Bus, View Entire Route) */}
       <div className="absolute top-4 right-4 z-20 flex flex-col items-end gap-2">

@@ -903,5 +903,68 @@
   color: #7B8794 !important;
 }
 
+/* ==========================================================================
+   TRAKO Mobile-First Map & Bottom Sheet Layout (Phase 3.4.1)
+   ========================================================================== */
+
+/* 1. Responsive Map Height: 58-62vh on phones, 65vh on tablets */
+@media (max-width: 639px) {
+  .trako-map-wrapper {
+    height: 60vh !important;
+    max-height: 60dvh !important;
+    min-height: 58vh !important;
+  }
+
+  /* Prevent body elastic overscroll on mobile */
+  html, body {
+    overscroll-behavior-y: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Safe area padding & styling for mobile bottom sheets */
+  .trako-sheet {
+    touch-action: pan-y;
+    border-top-left-radius: 32px;
+    border-top-right-radius: 32px;
+    box-shadow: 0 -8px 32px rgba(128, 0, 128, 0.12), 0 -1px 0 rgba(0, 0, 0, 0.04);
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .trako-map-wrapper {
+    height: 65vh !important;
+    max-height: 65dvh !important;
+  }
+}
+
+/* 2. Internal smooth scrolling within bottom sheet without moving page (Requirement 5) */
+.trako-sheet-scroll {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(128, 0, 128, 0.2) transparent;
+}
+
+.trako-sheet-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.trako-sheet-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.trako-sheet-scroll::-webkit-scrollbar-thumb {
+  background: rgba(128, 0, 128, 0.2);
+  border-radius: 9999px;
+}
+
+/* 3. Safe Area Inset Support (Requirement 4) */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 12px);
+  }
+}
+
 
 
