@@ -10,7 +10,7 @@ const items = [
 
 export function BottomNavigation() {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur">
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur pb-[env(safe-area-inset-bottom,0px)]">
       <ul className="mx-auto grid max-w-md grid-cols-4">
         {items.map(({ to, label, icon: Icon }) => (
           <li key={to}>

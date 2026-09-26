@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 156" width="520" height="156" fill="none">
+  <!-- 1. ORBITAL SWOOSH: Back segment (behind 't' crossbar) -->
+  <path
+    d="M 28 80 C 16 56 36 37 68 36 C 89 36 108 45 120 57"
+    stroke="#FF8C00"
+    stroke-width="11"
+    stroke-linecap="round"
+    fill="none"
+  />
+
+  <!-- 2. LETTER 't' -->
+  <g id="letter-t">
+    <!-- Vertical stem with bottom rounded hook curving right -->
+    <path
+      d="M 72 45 L 72 108 C 72 124 82 131 99 131 C 108 131 114 128 120 124"
+      stroke="#480377"
+      stroke-width="24"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      fill="none"
+    />
+    <!-- Horizontal crossbar -->
+    <path
+      d="M 46 71 L 102 71"
+      stroke="#480377"
+      stroke-width="22"
+      stroke-linecap="round"
+    />
+  </g>
+
+  <!-- 3. ORBITAL SWOOSH: Front segment (sweeping across 't' stem) -->
+  <path
+    d="M 28 80 C 24 100 48 120 82 127 C 111 133 133 124 145 111"
+    stroke="#FF8C00"
+    stroke-width="11"
+    stroke-linecap="round"
+    fill="none"
+  />
+
+  <!-- 4. RED MAP PIN: Centered atop 't' stem -->
+  <g id="pin-marker" transform="translate(72, 27)">
+    <path
+      fill-rule="evenodd"
+      clip-rule="evenodd"
+      d="M 0 18 C -6.5 10 -15.5 -2 -15.5 -14 C -15.5 -22.5 -8.5 -29 0 -29 C 8.5 -29 15.5 -22.5 15.5 -14 C 15.5 -2 6.5 10 0 18 Z M 0 -19.5 C -3 -19.5 -5.5 -17 -5.5 -14 C -5.5 -11 -3 -8.5 0 -8.5 C 3 -8.5 5.5 -11 5.5 -14 C 5.5 -17 3 -19.5 0 -19.5 Z"
+      fill="#E5252A"
+    />
+  </g>
+
+  <!-- 5. LETTER 'r' -->
+  <g id="letter-r">
+    <!-- Vertical stem -->
+    <path
+      d="M 142 71 L 142 129"
+      stroke="#480377"
+      stroke-width="24"
+      stroke-linecap="round"
+    />
+    <!-- Arch branch -->
+    <path
+      d="M 143 89 C 151 76 166 69 182 69 C 192 69 200 72 206 76"
+      stroke="#480377"
+      stroke-width="22"
+      stroke-linecap="round"
+      fill="none"
+    />
+  </g>
+
+  <!-- 6. LETTER 'a' with golden accent (á) -->
+  <g id="letter-a">
+    <!-- Circular bowl -->
+    <circle
+      cx="248"
+      cy="100"
+      r="29"
+      stroke="#480377"
+      stroke-width="22"
+      fill="none"
+    />
+    <!-- Right vertical stem -->
+    <path
+      d="M 270 71 L 270 129"
+      stroke="#480377"
+      stroke-width="22"
+      stroke-linecap="round"
+    />
+    <!-- Accent mark (á): 45-degree angled pill -->
+    <path
+      d="M 238 51 L 259 30"
+      stroke="#FFB300"
+      stroke-width="13"
+      stroke-linecap="round"
+    />
+  </g>
+
+  <!-- 7. LETTER 'k' -->
+  <g id="letter-k">
+    <!-- Tall vertical stem -->
+    <path
+      d="M 314 39 L 314 129"
+      stroke="#480377"
+      stroke-width="24"
+      stroke-linecap="round"
+    />
+    <!-- Upper diagonal leg -->
+    <path
+      d="M 317 95 L 361 67"
+      stroke="#480377"
+      stroke-width="22"
+      stroke-linecap="round"
+    />
+    <!-- Lower diagonal leg -->
+    <path
+      d="M 329 90 L 365 129"
+      stroke="#480377"
+      stroke-width="22"
+      stroke-linecap="round"
+    />
+  </g>
+
+  <!-- 8. LETTER 'o' with festive sparks and orange dot -->
+  <g id="letter-o">
+    <!-- Circular body -->
+    <circle
+      cx="414"
+      cy="100"
+      r="29"
+      stroke="#480377"
+      stroke-width="22"
+      fill="none"
+    />
+
+    <!-- Three radiant rays bursting from upper-right of 'o' -->
+    <!-- Ray 1: Red (approx 11 o'clock) -->
+    <path
+      d="M 424 57 L 431 35"
+      stroke="#E5252A"
+      stroke-width="12"
+      stroke-linecap="round"
+    />
+    <!-- Ray 2: Yellow-Orange (approx 1 o'clock) -->
+    <path
+      d="M 441 63 L 459 47"
+      stroke="#FFB300"
+      stroke-width="12"
+      stroke-linecap="round"
+    />
+    <!-- Ray 3: Blue (approx 2:30 o'clock) -->
+    <path
+      d="M 454 75 L 476 69"
+      stroke="#1E88E5"
+      stroke-width="12"
+      stroke-linecap="round"
+    />
+
+    <!-- Bottom-right Orange Accent Dot -->
+    <circle
+      cx="466"
+      cy="122"
+      r="12"
+      fill="#FF7A00"
+    />
+  </g>
+</svg>

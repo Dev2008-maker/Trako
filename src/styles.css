@@ -140,6 +140,16 @@
   box-shadow: var(--shadow-float);
 }
 
+@utility rapido-fade-gradient {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    #ffffff 100%
+  );
+  pointer-events: none;
+}
+
 @utility live-pulse {
   animation: live-pulse 1.8s ease-in-out infinite;
 }

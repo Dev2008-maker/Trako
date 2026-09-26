@@ -18,9 +18,9 @@ export function AppShell({
   const { user, loading } = useAuth();
 
   return (
-    <div className="min-h-screen pb-16">
-      <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto grid max-w-md grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5">
+    <div className={bare ? "relative h-[100dvh] w-full overflow-hidden" : "min-h-screen pb-16"}>
+      <header className="sticky top-0 z-30 h-[60px] bg-white">
+        <div className="mx-auto flex h-full max-w-lg items-center justify-between gap-3 pl-[14px] pr-4">
           <div className="min-w-0">
             {title ? (
               <>
@@ -28,17 +28,15 @@ export function AppShell({
                 {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
               </>
             ) : (
-              <Link to="/" className="flex min-w-0 items-center gap-2">
-                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary text-sm font-black text-primary-foreground">
-                  T
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate font-display text-base font-extrabold tracking-tight">
-                    TRAKO
-                  </span>
-                  <span className="block truncate text-[11px] text-muted-foreground">
-                    Know your bus. Know your stop.
-                  </span>
+              <Link to="/" className="flex min-w-0 flex-col justify-center" aria-label="TRAKO Home">
+                <img
+                  src="/trako-logo.png"
+                  alt="TRAKO"
+                  className="block h-auto w-[118px] object-contain sm:w-[130px]"
+                  referrerPolicy="no-referrer"
+                />
+                <span className="mt-1 block truncate text-[10px] font-normal leading-tight text-muted-foreground">
+                  Know your bus. Know your stop.
                 </span>
               </Link>
             )}
@@ -54,7 +52,7 @@ export function AppShell({
             ) : (
               <Link
                 to="/auth"
-                className="shrink-0 rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground"
+                className="shrink-0 rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs transition-opacity hover:opacity-90 active:scale-95"
               >
                 Sign in
               </Link>
@@ -62,7 +60,7 @@ export function AppShell({
         </div>
       </header>
 
-      <main className={bare ? "" : "mx-auto max-w-md px-4 py-4"}>{children}</main>
+      <main className={bare ? "size-full" : "mx-auto max-w-md px-4 py-4"}>{children}</main>
       <BottomNavigation />
     </div>
   );

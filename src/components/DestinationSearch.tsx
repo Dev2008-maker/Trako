@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, MapPin, Search, X } from "lucide-react";
+import { Loader2, MapPin, Mic, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { searchPlaces } from "@/lib/maptiler.functions";
 import type { Stop } from "@/lib/transit";
@@ -18,11 +18,15 @@ export function DestinationSearch({
   selected,
   onSelect,
   onClear,
+  bare = false,
+  className = "",
 }: {
   stops: Stop[];
   selected: Destination | null;
   onSelect: (destination: Destination) => void;
   onClear: () => void;
+  bare?: boolean;
+  className?: string;
 }) {
   const [term, setTerm] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -55,11 +59,11 @@ export function DestinationSearch({
   const showResults = debounced.length >= 2 && !selected;
 
   return (
-    <section className="trako-card p-4">
-      <h2 className="text-base font-bold">Where do you want to go?</h2>
+    <section className={bare ? className : `trako-card p-4 ${className}`}>
+      <h2 className="text-base font-extrabold text-foreground">Where are you going?</h2>
 
       {selected ? (
-        <div className="mt-3 flex items-center gap-2 rounded-xl bg-tint px-3 py-2.5">
+        <div className="mt-2.5 flex items-center gap-2 rounded-2xl bg-tint px-3.5 py-2.5">
           <MapPin className="size-4 shrink-0 text-primary" />
           <span className="min-w-0 flex-1 truncate text-sm font-semibold">{selected.name}</span>
           <button
@@ -70,21 +74,28 @@ export function DestinationSearch({
               onClear();
             }}
             aria-label="Clear destination"
-            className="shrink-0 text-muted-foreground"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
           >
             <X className="size-4" />
           </button>
         </div>
       ) : (
-        <div className="mt-3 flex items-center gap-2 rounded-xl border border-input px-3 py-2.5 focus-within:border-primary">
+        <div className="mt-2.5 flex items-center gap-2.5 rounded-2xl border border-input/90 bg-white px-3.5 py-2 focus-within:border-primary shadow-2xs">
           <Search className="size-4 shrink-0 text-muted-foreground" />
           <input
             value={term}
             onChange={(event) => setTerm(event.target.value)}
-            placeholder="Search destination, area or bus stop"
-            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            placeholder="Search stops, colleges, landmarks..."
+            className="min-w-0 flex-1 bg-transparent text-xs sm:text-sm font-medium outline-none placeholder:text-muted-foreground"
           />
           {isFetching && <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />}
+          <button
+            type="button"
+            aria-label="Voice search"
+            className="grid size-7 place-items-center rounded-full bg-[#f59e0b] text-white shrink-0 shadow-xs hover:bg-amber-600 transition active:scale-95"
+          >
+            <Mic className="size-3.5 fill-white" />
+          </button>
         </div>
       )}
 

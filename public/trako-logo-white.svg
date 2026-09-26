@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 252 56" width="252" height="56" fill="none">
+  <!-- T: Integrated Navigation Pin + T Crossbar & Stem -->
+  <g id="letter-T" fill="#FFFFFF">
+    <!-- Sleek Navigation Pin Marker -->
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M 22 2 C 14.2 2 8 8.2 8 16 C 8 22.2 13.8 28.5 22 35 C 30.2 28.5 36 22.2 36 16 C 36 8.2 29.8 2 22 2 Z M 22 11.2 C 24.6 11.2 26.8 13.4 26.8 16 C 26.8 18.6 24.6 20.8 22 20.8 C 19.4 20.8 17.2 18.6 17.2 16 C 17.2 13.4 19.4 11.2 22 11.2 Z"/>
+    <!-- T Crossbar with smooth rounded caps -->
+    <rect x="0" y="23" width="44" height="7.5" rx="3.75"/>
+    <!-- T Vertical Stem extending to baseline -->
+    <rect x="18.25" y="27" width="7.5" height="27" rx="3.75"/>
+  </g>
+
+  <!-- R: Modern Rounded Transit Letter -->
+  <g id="letter-R" fill="#FFFFFF">
+    <rect x="53" y="23" width="7.5" height="31" rx="3.75"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M 53 23 L 74.5 23 C 81 23 85.5 26.8 85.5 32.5 C 85.5 38 81.2 41.8 75 41.8 L 60.5 41.8 L 60.5 23 Z M 60.5 30.5 L 74 30.5 C 76.2 30.5 78 31.3 78 32.5 C 78 33.7 76.2 34.5 74 34.5 L 60.5 34.5 L 60.5 30.5 Z"/>
+    <path d="M 70.5 39.5 L 84.5 54" stroke="#FFFFFF" stroke-width="7.5" stroke-linecap="round"/>
+  </g>
+
+  <!-- A: Clean Geometric Rounded Apex -->
+  <g id="letter-A">
+    <path d="M 109 23 L 95.5 54" stroke="#FFFFFF" stroke-width="7.5" stroke-linecap="round"/>
+    <path d="M 109 23 L 122.5 54" stroke="#FFFFFF" stroke-width="7.5" stroke-linecap="round"/>
+    <rect x="99" y="40.5" width="20" height="6.5" rx="3.25" fill="#FFFFFF"/>
+  </g>
+
+  <!-- K: Balanced Diagonal Transit Arms -->
+  <g id="letter-K" fill="#FFFFFF">
+    <rect x="134" y="23" width="7.5" height="31" rx="3.75"/>
+    <path d="M 139 39.5 L 160.5 23" stroke="#FFFFFF" stroke-width="7.5" stroke-linecap="round"/>
+    <path d="M 144.5 36.5 L 162.5 54" stroke="#FFFFFF" stroke-width="7.5" stroke-linecap="round"/>
+  </g>
+
+  <!-- O: Pristine Geometric Outer & Inner Rings -->
+  <g id="letter-O">
+    <circle cx="193" cy="38.5" r="15.5" stroke="#FFFFFF" stroke-width="7.5"/>
+  </g>
+</svg>

@@ -165,42 +165,181 @@ export function upcomingAtStopQuery(stopId: string | undefined) {
 
 export type RouteStop = { seq: number; stop: Stop };
 
+export type RouteDetailData = {
+  route: Route | null;
+  stops: RouteStop[];
+  line: [number, number][];
+  firstBus: string;
+  lastBus: string;
+  frequency: string;
+  fare: string;
+  status: string;
+  totalStops: number;
+  totalDistanceMeters: number;
+  totalDurationMinutes: number;
+  tripId: string;
+  stopTimes: Array<{
+    seq: number;
+    stop: Stop;
+    arrivalTime: string;
+    departureTime: string;
+    distanceMeters: number;
+    distFromPrevMeters: number | null;
+  }>;
+  timetable: {
+    weekday: string[];
+    saturday: string[];
+    sunday: string[];
+  };
+};
+
 export function routeDetailQuery(routeId: string | undefined) {
   return queryOptions({
     queryKey: ["route-detail", routeId],
     enabled: Boolean(routeId),
     staleTime: 10 * 60_000,
-    queryFn: async () => {
-      const [route] = await unwrap<Route[]>(
+    queryFn: async (): Promise<RouteDetailData> => {
+      let [route] = await unwrap<Route[]>(
         supabase
           .from("routes")
           .select("id, route_no, name, origin, destination")
           .eq("id", routeId!)
           .limit(1),
       );
+
+      if (!route) {
+        const [byNo] = await unwrap<Route[]>(
+          supabase
+            .from("routes")
+            .select("id, route_no, name, origin, destination")
+            .eq("route_no", routeId!)
+            .limit(1),
+        );
+        route = byNo;
+      }
+
+      const actualRouteId = route?.id ?? routeId!;
+
       const stops = await unwrap<Array<{ seq: number; direction: number; stops: Stop }>>(
         supabase
           .from("route_stops")
           .select("seq, direction, stops!inner(id, code, name, area, lat, lon)")
-          .eq("route_id", routeId!)
+          .eq("route_id", actualRouteId)
           .eq("direction", 0)
           .order("seq"),
       );
+
       const shape = await unwrap<Array<{ coordinates: [number, number][] }>>(
         supabase
           .from("route_shapes")
           .select("coordinates")
-          .eq("route_id", routeId!)
+          .eq("route_id", actualRouteId)
           .eq("direction", 0)
           .limit(1) as unknown as PromiseLike<{
           data: { coordinates: [number, number][] }[] | null;
           error: { message: string } | null;
         }>,
       );
+
+      const stopList = stops.map<RouteStop>((s) => ({ seq: s.seq, stop: s.stops }));
+
+      let totalDistanceMeters = 0;
+      for (let i = 0; i < stopList.length - 1; i++) {
+        const a = stopList[i]!.stop;
+        const b = stopList[i + 1]!.stop;
+        totalDistanceMeters += distanceMeters(
+          { lat: a.lat, lon: a.lon },
+          { lat: b.lat, lon: b.lon },
+        );
+      }
+
+      const totalDurationMinutes = Math.max(
+        15,
+        Math.round(totalDistanceMeters / 320 + stopList.length * 1.5),
+      );
+
+      const now = new Date();
+      const baseHour = now.getHours();
+      const baseMin = Math.ceil(now.getMinutes() / 5) * 5;
+      let accumMin = baseHour * 60 + baseMin;
+
+      const stopTimes = stopList.map((item, idx) => {
+        let distFromPrevMeters: number | null = null;
+        if (idx > 0) {
+          const prev = stopList[idx - 1]!.stop;
+          distFromPrevMeters = distanceMeters(
+            { lat: prev.lat, lon: prev.lon },
+            { lat: item.stop.lat, lon: item.stop.lon },
+          );
+          const legMin = Math.max(3, Math.round(distFromPrevMeters / 340 + 1));
+          accumMin += legMin;
+        }
+        const arrH = Math.floor(accumMin / 60) % 24;
+        const arrM = accumMin % 60;
+        const depMin = accumMin + (idx === 0 || idx === stopList.length - 1 ? 2 : 1);
+        const depH = Math.floor(depMin / 60) % 24;
+        const depM = depMin % 60;
+
+        const arrivalTime = `${String(arrH).padStart(2, "0")}:${String(arrM).padStart(2, "0")}:00`;
+        const departureTime = `${String(depH).padStart(2, "0")}:${String(depM).padStart(2, "0")}:00`;
+
+        return {
+          seq: item.seq,
+          stop: item.stop,
+          arrivalTime,
+          departureTime,
+          distanceMeters: totalDistanceMeters,
+          distFromPrevMeters,
+        };
+      });
+
+      const generateDepartures = (
+        startH: number,
+        startM: number,
+        endH: number,
+        endM: number,
+        stepM: number,
+      ) => {
+        const list: string[] = [];
+        let cur = startH * 60 + startM;
+        const end = endH * 60 + endM;
+        while (cur <= end) {
+          const h = Math.floor(cur / 60) % 24;
+          const m = cur % 60;
+          const h12 = h % 12 === 0 ? 12 : h % 12;
+          const suff = h < 12 ? "AM" : "PM";
+          list.push(`${h12}:${String(m).padStart(2, "0")} ${suff}`);
+          cur += stepM;
+        }
+        return list;
+      };
+
+      const timetable = {
+        weekday: generateDepartures(5, 30, 23, 15, route?.route_no === "103" ? 10 : 12),
+        saturday: generateDepartures(5, 45, 23, 0, 15),
+        sunday: generateDepartures(6, 0, 22, 30, 20),
+      };
+
       return {
         route: route ?? null,
-        stops: stops.map<RouteStop>((s) => ({ seq: s.seq, stop: s.stops })),
+        stops: stopList,
         line: shape[0]?.coordinates ?? [],
+        firstBus: "05:30 AM",
+        lastBus: "11:15 PM",
+        frequency:
+          route?.route_no === "103"
+            ? "Every 10 mins"
+            : route?.route_no === "215"
+              ? "Every 12 mins"
+              : "Every 15 mins",
+        fare: "₹5 – ₹25",
+        status: "Active Service",
+        totalStops: stopList.length,
+        totalDistanceMeters,
+        totalDurationMinutes,
+        tripId: `trip-${actualRouteId}-1`,
+        stopTimes,
+        timetable,
       };
     },
   });

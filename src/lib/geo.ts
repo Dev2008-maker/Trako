@@ -58,3 +58,122 @@ export function formatAgo(iso: string, now = Date.now()): string {
 }
 
 export const PUNE_CENTER: LatLng = { lat: 18.5204, lon: 73.8567 };
+
+export function findClosestPointIndex(points: [number, number][], target: LatLng): number {
+  if (points.length === 0) return 0;
+  let minD = Infinity;
+  let bestIdx = 0;
+  for (let i = 0; i < points.length; i++) {
+    const [lon, lat] = points[i]!;
+    const d = (lon - target.lon) ** 2 + (lat - target.lat) ** 2;
+    if (d < minD) {
+      minD = d;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
+
+export function extractSubPolyline(
+  points: [number, number][],
+  start: LatLng,
+  end: LatLng,
+): [number, number][] {
+  if (points.length <= 1) return points;
+  const startIdx = findClosestPointIndex(points, start);
+  const endIdx = findClosestPointIndex(points, end);
+  if (startIdx <= endIdx) {
+    const slice = points.slice(startIdx, endIdx + 1);
+    return slice.length >= 2
+      ? slice
+      : [
+          [start.lon, start.lat],
+          [end.lon, end.lat],
+        ];
+  } else {
+    const slice = points.slice(endIdx, startIdx + 1).reverse();
+    return slice.length >= 2
+      ? slice
+      : [
+          [start.lon, start.lat],
+          [end.lon, end.lat],
+        ];
+  }
+}
+
+export function interpolatePolyline(
+  points: [number, number][],
+  fraction: number,
+): {
+  point: LatLng;
+  completed: [number, number][];
+  remaining: [number, number][];
+} {
+  const clampedFraction = Math.max(0, Math.min(1, fraction));
+  if (points.length === 0) {
+    return { point: { lat: 0, lon: 0 }, completed: [], remaining: [] };
+  }
+  if (points.length === 1 || clampedFraction === 0) {
+    const p = points[0]!;
+    return {
+      point: { lon: p[0], lat: p[1] },
+      completed: [p],
+      remaining: points,
+    };
+  }
+  if (clampedFraction === 1) {
+    const p = points[points.length - 1]!;
+    return {
+      point: { lon: p[0], lat: p[1] },
+      completed: points,
+      remaining: [p],
+    };
+  }
+
+  const segmentLengths: number[] = [];
+  let totalMeters = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i]!;
+    const b = points[i + 1]!;
+    const len = distanceMeters({ lat: a[1], lon: a[0] }, { lat: b[1], lon: b[0] });
+    segmentLengths.push(len);
+    totalMeters += len;
+  }
+
+  if (totalMeters === 0) {
+    const p = points[0]!;
+    return { point: { lon: p[0], lat: p[1] }, completed: [p], remaining: points };
+  }
+
+  const targetMeters = clampedFraction * totalMeters;
+  let accumulated = 0;
+
+  for (let i = 0; i < segmentLengths.length; i++) {
+    const segLen = segmentLengths[i]!;
+    if (accumulated + segLen >= targetMeters || i === segmentLengths.length - 1) {
+      const segFraction = segLen > 0 ? (targetMeters - accumulated) / segLen : 0;
+      const a = points[i]!;
+      const b = points[i + 1]!;
+      const curLon = a[0] + (b[0] - a[0]) * segFraction;
+      const curLat = a[1] + (b[1] - a[1]) * segFraction;
+      const curPoint: [number, number] = [curLon, curLat];
+
+      const completed = [...points.slice(0, i + 1), curPoint];
+      const remaining = [curPoint, ...points.slice(i + 1)];
+
+      return {
+        point: { lon: curLon, lat: curLat },
+        completed,
+        remaining,
+      };
+    }
+    accumulated += segLen;
+  }
+
+  const last = points[points.length - 1]!;
+  return {
+    point: { lon: last[0], lat: last[1] },
+    completed: points,
+    remaining: [last],
+  };
+}

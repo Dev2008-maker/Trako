@@ -1,32 +1,38 @@
 import { createServerFn } from "@tanstack/react-start";
 
 export type MapConfig = {
-  style: {
-    version: 8;
-    sources: {
-      streets: {
-        type: "raster";
-        tiles: string[];
-        tileSize: 256;
-        attribution: string;
+  style:
+    | string
+    | {
+        version: 8;
+        sources: Record<string, unknown>;
+        layers: Array<Record<string, unknown>>;
       };
-    };
-    layers: Array<{ id: string; type: "raster"; source: "streets" }>;
-  };
 };
 
 /** A dependable street-map style. Place search can still use MapTiler when configured. */
 export const getMapConfig = createServerFn({ method: "GET" }).handler(
   async (): Promise<MapConfig> => {
+    const key = process.env["MAPTILER_API_KEY"] || process.env["VITE_MAPTILER_API_KEY"];
+    if (key) {
+      return {
+        style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${key}`,
+      };
+    }
     return {
       style: {
         version: 8,
         sources: {
           streets: {
             type: "raster",
-            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            tiles: [
+              "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+              "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+              "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+              "https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+            ],
             tileSize: 256,
-            attribution: "© OpenStreetMap contributors",
+            attribution: "© OpenStreetMap contributors, © CARTO",
           },
         },
         layers: [{ id: "streets", type: "raster", source: "streets" }],
