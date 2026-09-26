@@ -11,13 +11,15 @@ export type BusMarkerData = {
 };
 
 export type MapViewProps = {
-  center?: LatLng | null;
-  user?: LatLng | null;
-  stops?: Stop[];
-  selectedStopId?: string | null;
-  destination?: (LatLng & { name: string }) | null;
-  buses?: BusMarkerData[];
-  line?: [number, number][];
-  onStopClick?: (stopId: string) => void;
-  className?: string;
+  center?: LatLng | null | undefined;
+  user?: LatLng | null | undefined;
+  stops?: Stop[] | undefined;
+  selectedStopId?: string | null | undefined;
+  destination?: (LatLng & { name: string; context?: string | undefined; stopId?: string | undefined }) | null | undefined;
+  buses?: BusMarkerData[] | undefined;
+  line?: [number, number][] | undefined;
+  walkingLine?: [number, number][] | undefined;
+  onStopClick?: ((stopId: string) => void) | undefined;
+  className?: string | undefined;
+  isOutsidePune?: boolean | undefined;
 };

@@ -4,9 +4,10 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { MapView } from "@/components/map/MapView";
 import { NearbyStopCard } from "@/components/NearbyStopCard";
+import { OutsidePuneCard } from "@/components/OutsidePuneCard";
 import { useCurrentLocation } from "@/hooks/useCurrentLocation";
 import { nearestStops, stopsQuery } from "@/lib/transit";
-import { PUNE_CENTER } from "@/lib/geo";
+import { isInsidePune, PUNE_CENTER } from "@/lib/geo";
 
 export const Route = createFileRoute("/nearby")({
   head: () => ({
@@ -31,6 +32,7 @@ function Nearby() {
   const { data: stops = [], isLoading } = useQuery(stopsQuery);
   const [selected, setSelected] = useState<string | null>(null);
 
+  const isOutsidePune = Boolean(coords && !isInsidePune(coords));
   const near = useMemo(() => nearestStops(stops, coords, 12), [stops, coords]);
   const selectedStop = near.find((n) => n.stop.id === selected)?.stop;
 
@@ -57,20 +59,22 @@ function Nearby() {
           </div>
         )}
         {isLoading && <p className="text-sm text-muted-foreground">Loading stops…</p>}
-        {!isLoading && near.length === 0 && status !== "denied" && (
+        {isOutsidePune && <OutsidePuneCard />}
+        {!isLoading && !isOutsidePune && near.length === 0 && status !== "denied" && (
           <p className="text-sm text-muted-foreground">
             No stops found near you yet. Trako currently covers Pune city.
           </p>
         )}
-        {near.map(({ stop, meters }) => (
-          <NearbyStopCard
-            key={stop.id}
-            stop={stop}
-            meters={meters}
-            selected={stop.id === selected}
-            onSelect={() => setSelected(stop.id)}
-          />
-        ))}
+        {!isOutsidePune &&
+          near.map(({ stop, meters }) => (
+            <NearbyStopCard
+              key={stop.id}
+              stop={stop}
+              meters={meters}
+              selected={stop.id === selected}
+              onSelect={() => setSelected(stop.id)}
+            />
+          ))}
       </div>
     </AppShell>
   );

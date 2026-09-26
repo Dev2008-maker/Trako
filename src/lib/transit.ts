@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { distanceMeters, minutesFromNow, type LatLng } from "./geo";
+import { distanceMeters, isInsidePune, minutesFromNow, type LatLng } from "./geo";
 
 export type Stop = {
   id: string;
@@ -200,7 +200,7 @@ export function routeDetailQuery(routeId: string | undefined) {
 }
 
 export function nearestStops(stops: Stop[], from: LatLng | null, limit = 5) {
-  if (!from) return [];
+  if (!from || !isInsidePune(from)) return [];
   return stops
     .map((stop) => ({ stop, meters: distanceMeters(from, { lat: stop.lat, lon: stop.lon }) }))
     .sort((a, b) => a.meters - b.meters)

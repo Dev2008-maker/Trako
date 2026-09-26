@@ -6,6 +6,8 @@ import { AppShell } from "@/components/AppShell";
 import { MapView } from "@/components/map/MapView";
 import { NearestStopCard } from "@/components/NearestStopCard";
 import { NearbyStopCard } from "@/components/NearbyStopCard";
+import { OutsidePuneCard } from "@/components/OutsidePuneCard";
+import { RoutePreviewCard } from "@/components/RoutePreviewCard";
 import { DestinationSearch, type Destination } from "@/components/DestinationSearch";
 import { QuickActions } from "@/components/QuickActions";
 import { LiveStatusBadge } from "@/components/LiveStatusBadge";
@@ -13,12 +15,13 @@ import { useCurrentLocation } from "@/hooks/useCurrentLocation";
 import { useLiveBuses } from "@/hooks/useLiveBuses";
 import {
   nearestStops,
+  routeDetailQuery,
   routesBetweenQuery,
   statusFromPing,
   stopsQuery,
   type Stop,
 } from "@/lib/transit";
-import { formatWalk, PUNE_CENTER } from "@/lib/geo";
+import { formatWalk, isInsidePune, PUNE_CENTER } from "@/lib/geo";
 import type { BusMarkerData } from "@/components/map/types";
 
 export const Route = createFileRoute("/")({
@@ -50,6 +53,7 @@ function Home() {
   const [expanded, setExpanded] = useState(false);
 
   const origin = coords ?? null;
+  const isOutsidePune = Boolean(coords && !isInsidePune(coords));
   const near = useMemo(() => nearestStops(stops, origin, 5), [stops, origin]);
   const nearest = near[0];
 
@@ -60,6 +64,38 @@ function Home() {
       destination?.stopId ?? nearestStopIdTo(stops, destination),
     ),
   );
+
+  const topMatch = matches[0];
+  const { data: routeDetail } = useQuery(routeDetailQuery(topMatch?.route.id));
+
+  // Route shape line
+  const routeLine = useMemo<[number, number][] | undefined>(() => {
+    if (!destination) return undefined;
+    if (routeDetail?.line && routeDetail.line.length > 0) {
+      return routeDetail.line;
+    }
+    if (topMatch && origin) {
+      const boarding = stops.find((s) => s.id === topMatch.boardingStopId);
+      if (boarding) {
+        return [
+          [boarding.lon, boarding.lat],
+          [destination.lon, destination.lat],
+        ];
+      }
+    }
+    return undefined;
+  }, [destination, routeDetail, topMatch, origin, stops]);
+
+  // Walking path from Pickup Point to boarding stop
+  const walkingLine = useMemo<[number, number][] | undefined>(() => {
+    if (!destination || !topMatch || !origin) return undefined;
+    const boarding = stops.find((s) => s.id === topMatch.boardingStopId);
+    if (!boarding) return undefined;
+    return [
+      [origin.lon, origin.lat],
+      [boarding.lon, boarding.lat],
+    ];
+  }, [destination, topMatch, origin, stops]);
 
   const busMarkers = useMemo<BusMarkerData[]>(() => {
     const out: BusMarkerData[] = [];
@@ -84,6 +120,10 @@ function Home() {
     return dest && !list.some((s) => s.id === dest.id) ? [...list, dest] : list;
   }, [near, destination?.stopId, stops]);
 
+  // Map center:
+  // - If a destination is selected → center on destination (for route preview)
+  // - If GPS is available → use real GPS (don't snap to PUNE_CENTER after grant)
+  // - If GPS not yet available → fall back to PUNE_CENTER only as initial map seed
   const center = destination
     ? { lat: destination.lat, lon: destination.lon }
     : (origin ?? PUNE_CENTER);
@@ -99,114 +139,114 @@ function Home() {
           selectedStopId={selectedStopId ?? nearest?.stop.id ?? null}
           destination={destination}
           buses={busMarkers}
+          line={routeLine}
+          walkingLine={walkingLine}
           onStopClick={setSelectedStopId}
         />
       </div>
 
       <div className="trako-sheet relative z-10 -mt-6 mx-auto max-w-md space-y-3 px-4 pt-4 pb-6">
-        {status === "denied" && (
-          <div className="flex gap-2 rounded-xl bg-tint-strong p-3 text-sm">
-            <AlertCircle className="mt-0.5 size-4 shrink-0 text-primary" />
-            <div className="min-w-0">
-              <p className="font-semibold">Location access is needed to find nearby bus stops.</p>
-              <p className="text-muted-foreground">
-                You can still search a destination or stop below.
-              </p>
-            </div>
-          </div>
-        )}
-        {(status === "locating" || status === "idle") && !coords && (
-          <p className="rounded-xl bg-tint-strong p-3 text-sm text-muted-foreground">
-            Finding your location…
-          </p>
-        )}
-        {(status === "error" || status === "unavailable") && (
-          <button
-            type="button"
-            onClick={request}
-            className="w-full rounded-xl bg-tint-strong p-3 text-sm font-semibold text-primary"
-          >
-            Location unavailable — tap to try again
-          </button>
-        )}
-
-        {nearest && (
-          <NearestStopCard
-            stop={nearest.stop}
-            meters={nearest.meters}
-            extraCount={Math.max(0, near.length - 1)}
-            onExpand={() => setExpanded((prev) => !prev)}
-          />
-        )}
-
-        {expanded && near.length > 1 && (
-          <div className="space-y-2">
-            {near.slice(1).map(({ stop, meters }) => (
-              <NearbyStopCard
-                key={stop.id}
-                stop={stop}
-                meters={meters}
-                selected={stop.id === selectedStopId}
-                onSelect={() => setSelectedStopId(stop.id)}
-              />
-            ))}
-          </div>
-        )}
-
-        <DestinationSearch
-          stops={stops}
-          selected={destination}
-          onSelect={(dest) => {
-            setDestination(dest);
-            setExpanded(false);
-          }}
-          onClear={() => setDestination(null)}
-        />
-
-        {destination && (
-          <section className="space-y-2">
-            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground">
-              BUSES TOWARDS {destination.name.toUpperCase()}
-            </p>
-            {matches.length === 0 ? (
-              <p className="rounded-xl bg-card p-4 text-sm text-muted-foreground shadow-card">
+        {destination ? (
+          // Route Preview state
+          topMatch ? (
+            <RoutePreviewCard
+              destination={destination}
+              route={topMatch.route}
+              boardingStop={stops.find((s) => s.id === topMatch.boardingStopId)}
+              walkMeters={near.find((n) => n.stop.id === topMatch.boardingStopId)?.meters}
+              stopsRemaining={topMatch.destSeq - topMatch.boardSeq}
+              onClear={() => setDestination(null)}
+            />
+          ) : (
+            <section className="trako-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="font-display font-bold text-base">{destination.name}</p>
+                <button
+                  type="button"
+                  onClick={() => setDestination(null)}
+                  className="text-xs font-semibold text-primary"
+                >
+                  Change
+                </button>
+              </div>
+              <p className="text-sm text-muted-foreground">
                 No direct PMPML route found from your nearby stops to this destination yet.
               </p>
-            ) : (
-              matches.map((match) => {
-                const boarding = stops.find((s) => s.id === match.boardingStopId);
-                const walkMeters = near.find((n) => n.stop.id === match.boardingStopId)?.meters;
-                return (
-                  <Link
-                    key={`${match.route.id}-${match.direction}`}
-                    to="/routes/$routeId"
-                    params={{ routeId: match.route.id }}
-                    className="trako-card block p-3.5"
-                  >
-                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-                      <div className="min-w-0">
-                        <p className="font-display text-base font-bold">BUS {match.route.route_no}</p>
-                        <p className="truncate text-xs text-muted-foreground">{match.route.name}</p>
-                      </div>
-                      <LiveStatusBadge status="scheduled" />
-                    </div>
-                    <p className="mt-2 text-sm">
-                      Board at <span className="font-semibold">{boarding?.name ?? "nearby stop"}</span>
-                      {walkMeters !== undefined && (
-                        <span className="text-muted-foreground"> · {formatWalk(walkMeters)}</span>
-                      )}
-                    </p>
-                    <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Bus className="size-3.5" /> {match.destSeq - match.boardSeq} stops to your destination
-                    </p>
-                  </Link>
-                );
-              })
+              <Link
+                to="/routes"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-border py-2.5 text-sm font-semibold text-primary"
+              >
+                <Bus className="size-4" /> Browse All Routes
+              </Link>
+            </section>
+          )
+        ) : (
+          // Default state: Location status, Nearest Stop, Search Sheet, Quick Actions
+          <>
+            {status === "denied" && (
+              <div className="flex gap-2 rounded-xl bg-tint-strong p-3 text-sm">
+                <AlertCircle className="mt-0.5 size-4 shrink-0 text-primary" />
+                <div className="min-w-0">
+                  <p className="font-semibold">Location access is needed to find nearby bus stops.</p>
+                  <p className="text-muted-foreground">
+                    You can still search a destination or stop below.
+                  </p>
+                </div>
+              </div>
             )}
-          </section>
-        )}
+            {(status === "locating" || status === "idle") && !coords && (
+              <p className="rounded-xl bg-tint-strong p-3 text-sm text-muted-foreground">
+                Finding your location…
+              </p>
+            )}
+            {(status === "error" || status === "unavailable") && (
+              <button
+                type="button"
+                onClick={request}
+                className="w-full rounded-xl bg-tint-strong p-3 text-sm font-semibold text-primary"
+              >
+                Location unavailable — tap to try again
+              </button>
+            )}
 
-        <QuickActions />
+            {isOutsidePune && <OutsidePuneCard />}
+
+            {!isOutsidePune && nearest && (
+              <NearestStopCard
+                stop={nearest.stop}
+                meters={nearest.meters}
+                extraCount={Math.max(0, near.length - 1)}
+                onExpand={() => setExpanded((prev) => !prev)}
+              />
+            )}
+
+            {!isOutsidePune && expanded && near.length > 1 && (
+              <div className="space-y-2">
+                {near.slice(1).map(({ stop, meters }) => (
+                  <NearbyStopCard
+                    key={stop.id}
+                    stop={stop}
+                    meters={meters}
+                    selected={stop.id === selectedStopId}
+                    onSelect={() => setSelectedStopId(stop.id)}
+                  />
+                ))}
+              </div>
+            )}
+
+            <DestinationSearch
+              stops={stops}
+              selected={destination}
+              onSelect={(dest) => {
+                setDestination(dest);
+                setExpanded(false);
+              }}
+              onClear={() => setDestination(null)}
+            />
+
+            <QuickActions />
+          </>
+        )}
       </div>
     </AppShell>
   );

@@ -416,82 +416,168 @@
   border-top-color: #1E1B4B;
 }
 
-/* ── Live / stale bus badges ───────────────────────────────────────────── */
-.trako-bus {
-  display: inline-flex;
+/* ==========================================================================
+   TRAKO Phase 2.4A — Live Bus Markers (Rapido Production Quality)
+   ========================================================================== */
+
+/* ── Keyframes ─────────────────────────────────────────────────────────── */
+
+/**
+ * busPulse: green ring expands outward from the bus center and fades to zero.
+ * Runs every 2 s, creates the "alive" live tracking feel.
+ */
+@keyframes busPulse {
+  0%   { transform: scale(0.6); opacity: 0.80; }
+  70%  { transform: scale(2.8); opacity: 0; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+
+/** busMove: subtle scale bounce when a bus teleports to a new tile (fallback). */
+@keyframes busMove {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(0.88); }
+  70%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+/** busHeadingRotate: used as a CSS class when rotation is set by JS transform. */
+@keyframes busHeadingRotate {
+  from { transform: rotate(var(--bus-heading-from, 0deg)); }
+  to   { transform: rotate(var(--bus-heading-to, 0deg)); }
+}
+
+/* ── Reusable marker classes ───────────────────────────────────────────── */
+
+/**
+ * .trako-live-bus
+ * Outer wrapper for the bus marker. Centers the pulse ring and the icon circle.
+ * 36×36px hit area; the visible circle is 18×18px centered inside.
+ */
+.trako-live-bus {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 9px;
-  border-radius: 9999px;
-  font-family: var(--font-display, "Sora", sans-serif);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.08);
-  border: 1.5px solid rgba(255, 255, 255, 0.95);
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  white-space: nowrap;
+  justify-content: center;
+  pointer-events: none;
+  will-change: transform;
 }
 
-.trako-bus-live {
+/**
+ * .trako-live-pulse
+ * Green expanding ring behind the bus circle — absolutely centered.
+ * Visible only for live buses (see .trako-live-bus--live).
+ */
+.trako-live-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.50);   /* emerald-500 50% */
+  animation: busPulse 2s ease-out infinite;
+  pointer-events: none;
+}
+
+/**
+ * .trako-bus-shadow
+ * The visible 18×18px purple circular marker with white bus icon.
+ * Contains the SVG inline via JS. Shadow creates soft elevation effect.
+ */
+.trako-bus-shadow {
+  position: relative;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #800080;
+  border: 2px solid #FFFFFF;
+  box-shadow:
+    0 0 0 2px rgba(128, 0, 128, 0.20),
+    0 4px 12px rgba(128, 0, 128, 0.45),
+    0 2px 4px rgba(0, 0, 0, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+  will-change: transform;
+  transform-origin: center center;
+  /* Icon is centered via flex — SVG is injected by JS */
+  overflow: hidden;
+}
+
+.trako-bus-shadow svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Live bus: full pulse ring visible */
+.trako-live-bus--live .trako-live-pulse {
+  animation: busPulse 2s ease-out infinite;
+  opacity: 1;
+}
+
+/* Live bus: slightly brighter purple */
+.trako-live-bus--live .trako-bus-shadow {
   background: linear-gradient(135deg, #800080, #9333EA);
-  color: #FFFFFF;
+  box-shadow:
+    0 0 0 2px rgba(128, 0, 128, 0.25),
+    0 4px 14px rgba(128, 0, 128, 0.50),
+    0 2px 5px rgba(0, 0, 0, 0.20);
 }
 
-.trako-bus-live::before {
-  content: "";
-  width: 6.5px;
-  height: 6.5px;
-  border-radius: 50%;
-  background: #22C55E;
-  box-shadow: 0 0 6px #22C55E;
-  animation: live-pulse 1.6s ease-in-out infinite;
-  flex-shrink: 0;
+/* Stale bus: dimmed, no pulse ring */
+.trako-live-bus--stale .trako-live-pulse {
+  animation: none;
+  opacity: 0;
 }
 
-.trako-bus-stale {
+.trako-live-bus--stale .trako-bus-shadow {
   background: #64748B;
-  color: #FFFFFF;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.22),
+    0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
-.trako-bus-stale::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #CBD5E1;
-  flex-shrink: 0;
-}
-
-.trako-bus[data-demo="true"]::after {
+/* Demo badge overlay */
+.trako-live-bus[data-demo="true"]::after {
   content: "DEMO";
-  font-size: 8px;
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 7px;
   font-weight: 800;
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.90);
+  color: #800080;
   padding: 1px 4px;
   border-radius: 4px;
-  margin-left: 2px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
 }
 
-/* ── Destination marker ────────────────────────────────────────────────── */
+
+/* ── Destination marker (Purple Trako Rapido Style) ────────────────────── */
 .trako-destination {
   display: flex;
   flex-direction: column;
   align-items: center;
   pointer-events: none;
+  animation: trako-dest-drop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .trako-destination-pill {
-  background: linear-gradient(135deg, #DC2626, #EF4444);
+  background: linear-gradient(135deg, #800080 0%, #9333EA 100%);
   color: #FFFFFF;
   font-family: var(--font-display, "Sora", sans-serif);
   font-size: 11px;
   font-weight: 700;
-  padding: 4px 10px;
+  padding: 4px 11px;
   border-radius: 9999px;
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.38);
-  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 4px 14px rgba(128, 0, 128, 0.40),
+    0 1px 3px rgba(0, 0, 0, 0.10);
+  border: 1.5px solid rgba(255, 255, 255, 0.90);
   white-space: nowrap;
 }
 
@@ -500,17 +586,47 @@
   height: 0;
   border-left: 4.5px solid transparent;
   border-right: 4.5px solid transparent;
-  border-top: 6px solid #DC2626;
+  border-top: 6px solid #800080;
   margin-top: -1px;
+  filter: drop-shadow(0 1.5px 2px rgba(0, 0, 0, 0.15));
 }
 
 .trako-destination-pin {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #DC2626;
-  box-shadow: 0 0 0 2.5px #FFFFFF, 0 2px 6px rgba(220, 38, 38, 0.45);
+  background: #800080;
+  box-shadow:
+    0 0 0 2.5px #FFFFFF,
+    0 2px 8px rgba(128, 0, 128, 0.50);
   margin-top: 2px;
+}
+
+@keyframes trako-dest-drop {
+  0% {
+    transform: translateY(-20px) scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* ── Route preview card animation ──────────────────────────────────────── */
+.trako-route-card {
+  animation: trako-sheet-spring 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes trako-sheet-spring {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* ── Floating GPS button ───────────────────────────────────────────────── */
@@ -571,18 +687,72 @@
     box-shadow 0.2s ease;
 }
 
-.trako-track-btn:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 6px 18px rgba(128, 0, 128, 0.42),
-    0 3px 6px rgba(0, 0, 0, 0.10);
-}
 
 .trako-track-btn:active {
   transform: scale(0.95);
   box-shadow:
     0 2px 8px rgba(128, 0, 128, 0.25),
     0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Track Bus — LIVE indicator sub-elements (Phase 2.4A) ──────────────── */
+
+/* Container for green dot + ripple */
+.trako-track-live-dot {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
+/* Expanding ripple behind the green dot */
+.trako-track-live-ripple {
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.55);
+  animation: trackLiveRipple 2s ease-out infinite;
+}
+
+/* Solid green core dot */
+.trako-track-live-core {
+  position: relative;
+  z-index: 1;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22C55E;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.80);
+}
+
+/* "LIVE" micro-label */
+.trako-track-live-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.14);
+  padding: 1px 5px;
+  border-radius: 4px;
+  line-height: 1.4;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+@keyframes trackLiveRipple {
+  0%   { transform: scale(0.7); opacity: 0.85; }
+  65%  { transform: scale(2.4); opacity: 0; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+/* Hover: add soft elevation lift */
+.trako-track-btn:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 22px rgba(128, 0, 128, 0.46),
+    0 3px 6px rgba(0, 0, 0, 0.10);
 }
 
 /* ── MapLibre attribution polish ───────────────────────────────────────── */

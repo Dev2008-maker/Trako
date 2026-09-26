@@ -59,3 +59,29 @@ export function formatAgo(iso: string, now = Date.now()): string {
 }
 
 export const PUNE_CENTER: LatLng = { lat: 18.5204, lon: 73.8567 };
+export const MMIT_LOHGAON: LatLng = { lat: 18.5948, lon: 73.9320 };
+
+/**
+ * Pune Metropolitan / PMPML operational boundary (PMC, PCMC, PMRDA).
+ * Covers Alandi/Chakan/Talegaon in the North, Katraj/Saswad in the South,
+ * Hinjawadi/Paud in the West, and Wagholi/Uruli Kanchan/Loni Kalbhor in the East.
+ */
+export const PUNE_BOUNDS = {
+  minLat: 18.15,
+  maxLat: 18.85,
+  minLon: 73.55,
+  maxLon: 74.25,
+};
+
+/** Checks if a point is within the active Pune PMPML service area. */
+export function isInsidePune(point: LatLng | null | undefined): boolean {
+  if (!point || typeof point.lat !== "number" || typeof point.lon !== "number") return false;
+  const inBBox =
+    point.lat >= PUNE_BOUNDS.minLat &&
+    point.lat <= PUNE_BOUNDS.maxLat &&
+    point.lon >= PUNE_BOUNDS.minLon &&
+    point.lon <= PUNE_BOUNDS.maxLon;
+  if (!inBBox) return false;
+  return distanceMeters(point, PUNE_CENTER) <= 55_000;
+}
+

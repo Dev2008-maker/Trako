@@ -5,10 +5,61 @@ import { useQuery } from "@tanstack/react-query";
 import { Locate, Radio } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { getMapConfig } from "@/lib/maptiler.functions";
-import { PUNE_CENTER } from "@/lib/geo";
+import { isInsidePune, PUNE_CENTER } from "@/lib/geo";
 import type { MapViewProps } from "./types";
+import type { BusMarkerData } from "./types";
 
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t);
+
+/** Calculate bearing in degrees between two [lng, lat] points. */
+function calcBearing(from: [number, number], to: [number, number]): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const toDeg = (r: number) => (r * 180) / Math.PI;
+  const dLng = toRad(to[0] - from[0]);
+  const lat1 = toRad(from[1]);
+  const lat2 = toRad(to[1]);
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
+
+/** White SVG bus icon (18×18 viewBox, centered inside 36px circle). */
+const BUS_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="3" y="5" width="18" height="12" rx="2"/>
+  <path d="M3 10h18"/>
+  <path d="M8 17v2"/>
+  <path d="M16 17v2"/>
+  <path d="M7 5V3"/>
+  <path d="M17 5V3"/>
+</svg>`;
+
+/** Build the DOM element for a live bus marker. */
+function createBusElement(bus: BusMarkerData): HTMLDivElement {
+  const wrapper = document.createElement("div");
+  wrapper.className = `trako-live-bus ${bus.status === "live" ? "trako-live-bus--live" : "trako-live-bus--stale"}`;
+  wrapper.dataset["busId"] = bus.id;
+  if (bus.isDemo) wrapper.dataset["demo"] = "true";
+
+  // Pulse ring (behind)
+  const pulse = document.createElement("div");
+  pulse.className = "trako-live-pulse";
+
+  // Main circular marker
+  const marker = document.createElement("div");
+  marker.className = "trako-bus-shadow";
+  marker.innerHTML = BUS_SVG;
+
+  wrapper.appendChild(pulse);
+  wrapper.appendChild(marker);
+  return wrapper;
+}
+
+/** State kept per bus marker for smooth movement + rotation. */
+type BusAnimState = {
+  marker: maplibregl.Marker;
+  heading: number;       // degrees, current smoothed heading
+  animFrame?: number;
+};
 
 /**
  * Rapido / Uber / Ola quality MapLibre implementation using MapTiler Light style.
@@ -21,6 +72,7 @@ export default function MapCanvas({
   destination,
   buses = [],
   line,
+  walkingLine,
   onStopClick,
   className = "",
 }: MapViewProps) {
@@ -29,7 +81,7 @@ export default function MapCanvas({
   const [ready, setReady] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const stopMarkers = useRef(new Map<string, maplibregl.Marker>());
-  const busMarkers = useRef(new Map<string, maplibregl.Marker>());
+  const busAnimStates = useRef(new Map<string, BusAnimState>());
   const userMarker = useRef<maplibregl.Marker | null>(null);
   const destMarker = useRef<maplibregl.Marker | null>(null);
   const clickHandler = useRef(onStopClick);
@@ -61,6 +113,17 @@ export default function MapCanvas({
   }, [stops, selectedStopId]);
 
   const hasLiveBuses = useMemo(() => buses.some((b) => b.status === "live"), [buses]);
+
+  /** Nearest 5 buses sorted by distance to user/center — prevents map clutter. */
+  const visibleBuses = useMemo(() => {
+    const ref = center ?? user ?? PUNE_CENTER;
+    const sorted = [...buses].sort((a, b) => {
+      const da = (a.lat - ref.lat) ** 2 + (a.lon - ref.lon) ** 2;
+      const db = (b.lat - ref.lat) ** 2 + (b.lon - ref.lon) ** 2;
+      return da - db;
+    });
+    return sorted.slice(0, 5);
+  }, [buses, center, user]);
 
   useEffect(() => {
     if (!holder.current || map.current || !styleUrl) return;
@@ -121,24 +184,35 @@ export default function MapCanvas({
       map.current = null;
       setReady(false);
       stopMarkers.current.clear();
-      busMarkers.current.clear();
+      for (const state of busAnimStates.current.values()) {
+        if (state.animFrame) cancelAnimationFrame(state.animFrame);
+      }
+      busAnimStates.current.clear();
       userMarker.current = null;
       destMarker.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [styleUrl]);
 
-  // Smooth camera follow animation when requested center changes
+  // Track whether we've already flown to the user's first real GPS fix.
+  // This prevents the map from constantly re-centering as GPS updates come in.
+  const hasFlownToUser = useRef(false);
+
+  // On first GPS fix: fly to the user's real location exactly once.
+  // On subsequent GPS updates: only update the dot — don't snap the camera.
+  // The user can always retrigger a fly by tapping the GPS (recenter) button.
   useEffect(() => {
-    if (!ready || !map.current || !center) return;
+    if (!ready || !map.current || !user) return;
+    if (hasFlownToUser.current) return; // Already flew once — do nothing
+    hasFlownToUser.current = true;
     map.current.flyTo({
-      center: [center.lon, center.lat],
-      // Don't force a zoom — only pan to follow, let user control zoom level
-      duration: 800,
+      center: [user.lon, user.lat],
+      zoom: 14,
+      duration: 900,
       easing: easeInOut,
       essential: true,
     });
-  }, [ready, center?.lat, center?.lon]);
+  }, [ready, user?.lat, user?.lon]);
 
   // User location marker: Google Maps style blue GPS dot, accuracy circle & Rapido green "Pickup Point" pill
   useEffect(() => {
@@ -223,36 +297,53 @@ export default function MapCanvas({
     }
   }, [ready, visibleStops, selectedStopId]);
 
-  // Live bus markers
+  // ── Premium live bus markers (Phase 2.4A) ──────────────────────────────
   useEffect(() => {
     if (!ready || !map.current) return;
     const seen = new Set<string>();
-    for (const bus of buses) {
+
+    for (const bus of visibleBuses) {
       seen.add(bus.id);
-      let marker = busMarkers.current.get(bus.id);
-      if (!marker) {
-        const el = document.createElement("div");
-        marker = new maplibregl.Marker({ element: el })
+      let state = busAnimStates.current.get(bus.id);
+
+      if (!state) {
+        // First render — place marker immediately at current position
+        const el = createBusElement(bus);
+        const mapMarker = new maplibregl.Marker({ element: el, anchor: "center", rotation: 0, rotationAlignment: "map" })
           .setLngLat([bus.lon, bus.lat])
           .addTo(map.current!);
-        busMarkers.current.set(bus.id, marker);
+        state = { marker: mapMarker, heading: 0 };
+        busAnimStates.current.set(bus.id, state);
+      } else {
+        // Update live/stale class without recreating DOM
+        const el = state.marker.getElement();
+        const inner = el.querySelector(".trako-bus-shadow") as HTMLElement | null;
+        el.className = `trako-live-bus ${bus.status === "live" ? "trako-live-bus--live" : "trako-live-bus--stale"}`;
+        if (bus.isDemo) el.dataset["demo"] = "true";
+        if (inner) inner.innerHTML = BUS_SVG;
       }
-      const el = marker.getElement();
-      el.className = `trako-bus ${bus.status === "live" ? "trako-bus-live" : "trako-bus-stale"}`;
-      el.textContent = bus.label;
-      if (bus.isDemo) el.dataset["demo"] = "true";
-      const [lng, lat] = marker.getLngLat().toArray();
-      if (Math.abs(lng - bus.lon) > 1e-6 || Math.abs(lat - bus.lat) > 1e-6) {
-        animateMarker(marker, [lng, lat], [bus.lon, bus.lat]);
+
+      // Smooth animated movement + rotation
+      const [curLng, curLat] = state.marker.getLngLat().toArray();
+      const moved = Math.abs(curLng - bus.lon) > 1e-6 || Math.abs(curLat - bus.lat) > 1e-6;
+      if (moved) {
+        // Compute new heading; only update if movement is meaningful
+        const newHeading = calcBearing([curLng, curLat], [bus.lon, bus.lat]);
+        // Cancel any pending frame for this bus
+        if (state.animFrame) cancelAnimationFrame(state.animFrame);
+        animateBus(state, [curLng, curLat], [bus.lon, bus.lat], newHeading);
       }
     }
-    for (const [id, marker] of busMarkers.current) {
+
+    // Remove markers for buses no longer in view
+    for (const [id, state] of busAnimStates.current) {
       if (!seen.has(id)) {
-        marker.remove();
-        busMarkers.current.delete(id);
+        if (state.animFrame) cancelAnimationFrame(state.animFrame);
+        state.marker.remove();
+        busAnimStates.current.delete(id);
       }
     }
-  }, [ready, buses]);
+  }, [ready, visibleBuses]);
 
   // Destination marker
   useEffect(() => {
@@ -319,6 +410,70 @@ export default function MapCanvas({
     });
   }, [ready, line]);
 
+  // Walking path polyline (dashed line from Pickup Point to nearest boarding stop)
+  useEffect(() => {
+    const instance = map.current;
+    if (!ready || !instance) return;
+    const data = {
+      type: "Feature" as const,
+      properties: {},
+      geometry: { type: "LineString" as const, coordinates: walkingLine ?? [] },
+    };
+    const source = instance.getSource("trako-walking");
+    if (source && "setData" in source) {
+      (source as maplibregl.GeoJSONSource).setData(data);
+      return;
+    }
+    instance.addSource("trako-walking", { type: "geojson", data });
+
+    // White casing for walking line
+    instance.addLayer({
+      id: "trako-walking-casing",
+      type: "line",
+      source: "trako-walking",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": "#FFFFFF", "line-width": 6, "line-opacity": 0.95 },
+    });
+
+    // Purple dashed walking line
+    instance.addLayer({
+      id: "trako-walking-line",
+      type: "line",
+      source: "trako-walking",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": "#9333EA",
+        "line-width": 3.5,
+        "line-dasharray": [1.5, 2],
+        "line-opacity": 0.95,
+      },
+    });
+  }, [ready, walkingLine]);
+
+  // Automatic smooth bounds fitting when route preview or destination is active
+  useEffect(() => {
+    const instance = map.current;
+    if (!ready || !instance || !destination) return;
+
+    const bounds = new maplibregl.LngLatBounds();
+    bounds.extend([destination.lon, destination.lat]);
+    if (user) bounds.extend([user.lon, user.lat]);
+    if (line && line.length > 0) {
+      for (const pt of line) bounds.extend(pt);
+    }
+    if (walkingLine && walkingLine.length > 0) {
+      for (const pt of walkingLine) bounds.extend(pt);
+    }
+
+    instance.fitBounds(bounds, {
+      padding: { top: 60, bottom: 280, left: 40, right: 40 },
+      maxZoom: 15,
+      duration: 1000,
+      easing: easeInOut,
+      essential: true,
+    });
+  }, [ready, destination?.lat, destination?.lon, line, walkingLine, user?.lat, user?.lon]);
+
   function recenter() {
     setIsLocating(true);
     setTimeout(() => setIsLocating(false), 800);
@@ -341,6 +496,8 @@ export default function MapCanvas({
       </div>
     );
   }
+
+  const isUserOutsidePune = Boolean(user && !isInsidePune(user));
 
   return (
     <div className={`relative w-full h-full overflow-hidden select-none ${className}`}>
@@ -367,33 +524,63 @@ export default function MapCanvas({
         to="/trips"
         className="trako-track-btn absolute bottom-8 right-4 z-20"
       >
-        {/* Live green beacon */}
-        <span className="relative flex size-2 shrink-0">
-          <span
-            className={`absolute inline-flex size-full rounded-full bg-emerald-400 ${hasLiveBuses ? "animate-ping opacity-75" : "opacity-0"}`}
-          />
-          <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
+        {/* LIVE or DEMO indicator with ripple */}
+        <span className="trako-track-live-dot">
+          {!isUserOutsidePune && <span className="trako-track-live-ripple" />}
+          <span className={`trako-track-live-core ${isUserOutsidePune ? "!bg-amber-400 !shadow-[0_0_6px_rgba(251,191,36,0.8)]" : ""}`} />
         </span>
+        <span className="trako-track-live-label">{isUserOutsidePune ? "DEMO" : "LIVE"}</span>
         <Radio className="size-3.5 shrink-0" />
-        Track Bus
+        {isUserOutsidePune ? "Demo Mode" : "Track Bus"}
       </Link>
     </div>
   );
 }
 
-function animateMarker(
-  marker: maplibregl.Marker,
+/**
+ * Smoothly animate a bus marker from [from] to [to] with easeInOut interpolation
+ * and simultaneously rotate it to face [targetHeading] degrees.
+ * Stores the rAF id on the state object so it can be cancelled if a new update arrives.
+ */
+function animateBus(
+  state: BusAnimState,
   from: [number, number],
   to: [number, number],
-  duration = 900,
+  targetHeading: number,
+  duration = 1000,
 ) {
   const startedAt = performance.now();
+  const startHeading = state.heading;
+  // Shortest-path rotation delta (handles 359→1° wrap-around)
+  let delta = ((targetHeading - startHeading + 540) % 360) - 180;
+
   const step = (now: number) => {
     const t = Math.min(1, (now - startedAt) / duration);
-    const eased = t * (2 - t);
-    marker.setLngLat([from[0] + (to[0] - from[0]) * eased, from[1] + (to[1] - from[1]) * eased]);
-    if (t < 1) requestAnimationFrame(step);
+    // easeInOut: smooth acceleration + deceleration
+    const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+
+    // Interpolate position
+    state.marker.setLngLat([
+      from[0] + (to[0] - from[0]) * eased,
+      from[1] + (to[1] - from[1]) * eased,
+    ]);
+
+    // Interpolate heading rotation via CSS transform on inner marker element
+    const curHeading = startHeading + delta * eased;
+    state.heading = curHeading;
+    const inner = state.marker.getElement().querySelector(".trako-bus-shadow") as HTMLElement | null;
+    if (inner) {
+      inner.style.transform = `rotate(${curHeading}deg)`;
+    }
+
+    if (t < 1) {
+      state.animFrame = requestAnimationFrame(step);
+    } else {
+      delete state.animFrame;
+      state.heading = targetHeading;
+    }
   };
-  requestAnimationFrame(step);
+
+  state.animFrame = requestAnimationFrame(step);
 }
 
