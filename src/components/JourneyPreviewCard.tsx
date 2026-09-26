@@ -124,7 +124,7 @@ export function JourneyPreviewCard({
                 }`}
               />
               <p className="text-[10px] sm:text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
-                {isRideActive ? "Live Ride Tracking" : "Journey Preview"}
+                {isRideActive ? "DEMO LIVE" : "Journey Preview"}
               </p>
               <span className="rounded bg-primary/10 px-1.5 py-0.2 text-[10px] font-bold text-primary shrink-0">
                 Bus {busNumber}
