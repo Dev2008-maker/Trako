@@ -188,10 +188,9 @@ export default function MapCanvas({
     queryFn: () => getMapConfig(),
   });
 
-  const apiKey = import.meta.env['VITE_MAPTILER_API_KEY'] || "";
-  const styleUrl =
-    config?.style ||
-    (apiKey ? `https://api.maptiler.com/maps/base-light/style.json?key=${apiKey}` : "/trako-map-style.json");
+  // Wait for the server-provided style before creating the map; creating it early with a
+  // guessed style meant the map never re-initialised when the real style arrived.
+  const styleUrl: string | Record<string, unknown> | null = config?.style ?? (isError ? FALLBACK_STYLE : null);
 
   const start = center ?? user ?? PUNE_CENTER;
 
@@ -241,8 +240,20 @@ export default function MapCanvas({
       attributionControl: { compact: true },
     });
 
+    // If the remote style fails before the map loads, fall back to the bundled Trako style once.
+    let fellBack = styleUrl === FALLBACK_STYLE;
+    instance.on("error", (ev) => {
+      if (fellBack || instance.loaded()) return;
+      const msg = String((ev as { error?: { message?: string } }).error?.message ?? "");
+      if (msg.includes("style") || msg.includes("AJAXError") || msg.includes("404")) {
+        fellBack = true;
+        instance.setStyle(FALLBACK_STYLE);
+      }
+    });
+
     instance.on("load", () => {
       setReady(true);
+      instance.resize();
       try {
         const style = instance.getStyle();
         if (style && style.layers) {
