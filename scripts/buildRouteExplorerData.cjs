@@ -60,7 +60,7 @@ async function main() {
     const parts = line.split(',');
     const route_id = parts[0];
     const trip_id = parts[2];
-    const shape_id = parts[7] || parts[6];
+    const shape_id = parts[5];
     const direction_id = parseInt(parts[5], 10) || 0;
     if (!routeTrips.has(route_id)) routeTrips.set(route_id, []);
     routeTrips.get(route_id).push({ trip_id, shape_id, direction_id });
@@ -238,7 +238,7 @@ async function main() {
       origin: originStopName,
       destination: destStopName,
       stopsCount: resolvedStops.length || 24,
-      operatingStatus: 'Active · Regular Service',
+      operatingStatus: 'Scheduled Service',
       firstBus,
       lastBus,
       frequency,
