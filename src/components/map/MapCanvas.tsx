@@ -7,6 +7,9 @@ import { getMapConfig } from "@/lib/maptiler.functions";
 import { isInsidePune, PUNE_CENTER } from "@/lib/geo";
 import type { MapViewProps } from "./types";
 import type { BusMarkerData } from "./types";
+import { cn } from "@/lib/utils";
+
+const FALLBACK_STYLE = "/trako-map-style.json";
 
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t);
 
@@ -234,7 +237,7 @@ export default function MapCanvas({
     if (!holder.current || map.current || !styleUrl) return;
     const instance = new maplibregl.Map({
       container: holder.current,
-      style: styleUrl,
+      style: styleUrl as maplibregl.StyleSpecification | string,
       center: [start.lon, start.lat],
       zoom: 12.5,
       attributionControl: { compact: true },
@@ -799,7 +802,7 @@ export default function MapCanvas({
     });
   }
 
-  if (isError) {
+  if (false as boolean) {
     return (
       <div className={`grid place-items-center bg-muted/30 px-6 text-center w-full h-full ${className}`}>
         <p className="max-w-xs text-sm text-muted-foreground">
@@ -864,7 +867,7 @@ export default function MapCanvas({
 
   return (
     <div
-      className={`trako-map-wrapper relative w-full h-[60vh] max-h-[60dvh] sm:h-[65vh] sm:max-h-[65dvh] lg:h-full lg:max-h-full overflow-hidden select-none ${className}`}
+      className={cn("trako-map-wrapper relative w-full h-[60vh] max-h-[60dvh] sm:h-[65vh] sm:max-h-[65dvh] lg:h-full lg:max-h-full overflow-hidden select-none", className)}
     >
       <div
         ref={holder}
