@@ -7,7 +7,6 @@ import { getMapConfig } from "@/lib/maptiler.functions";
 import { isInsidePune, PUNE_CENTER, type LatLng } from "@/lib/geo";
 import type { MapViewProps } from "./types";
 import type { BusMarkerData } from "./types";
-import { cn } from "@/lib/utils";
 
 const FALLBACK_STYLE = "/trako-map-style.json";
 
@@ -858,7 +857,7 @@ export default function MapCanvas({
 
   return (
     <div
-      className={cn("trako-map-wrapper relative w-full h-[60vh] max-h-[60dvh] sm:h-[65vh] sm:max-h-[65dvh] lg:h-full lg:max-h-full overflow-hidden select-none", className && /(^|\s)(size-full|h-)/.test(className) ? "h-full max-h-full sm:h-full sm:max-h-full" : "", className)}
+      className={`trako-map-wrapper relative w-full overflow-hidden select-none ${className && /(^|\s)(size-|h-)/.test(className) ? "h-full" : "h-[60vh] max-h-[60dvh] sm:h-[65vh] sm:max-h-[65dvh] lg:h-full lg:max-h-full"} ${className}`}
     >
       <div
         ref={holder}
