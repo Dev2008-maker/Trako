@@ -75,12 +75,12 @@ export function JourneyPreviewCard({
 
   // Touch drag handlers for sheet (drag up to expand, drag down to collapse)
   const handleTouchStart = (e: React.TouchEvent) => {
-    setDragStartY(e.touches[0].clientY);
+    setDragStartY(e.touches[0]?.clientY ?? null);
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (dragStartY === null) return;
-    const deltaY = e.changedTouches[0].clientY - dragStartY;
+    const deltaY = (e.changedTouches[0]?.clientY ?? dragStartY) - dragStartY;
     if (deltaY < -35) {
       setIsExpanded(true); // Dragged up -> Expand
     } else if (deltaY > 35) {
