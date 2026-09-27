@@ -154,60 +154,8 @@ export function getRouteJourney(routeId: string, directionId = 0): GtfsJourney |
   const exact = journeyMap.get(`${routeId}_${directionId}`) ?? journeyMap.get(routeId);
   if (exact) return exact;
 
-  // Fallback: if not in pre-extracted key journeys, synthesize from routes.json
-  const r = allRoutes.find((rt) => rt.id === routeId);
-  if (!r) return null;
-
-  return {
-    routeId: r.id,
-    routeShortName: r.shortName,
-    routeLongName: r.longName,
-    tripId: `trip_${r.id}_0`,
-    tripHeadsign: r.destination || r.longName,
-    directionId,
-    originStop: {
-      stopId: `stop_${r.id}_0`,
-      name: r.origin || "Origin",
-      lat: 18.5204,
-      lon: 73.8567,
-      sequence: 1,
-      scheduledArrival: "08:00:00",
-      scheduledDeparture: "08:00:00",
-    },
-    destinationStop: {
-      stopId: `stop_${r.id}_99`,
-      name: r.destination || "Destination",
-      lat: 18.5308,
-      lon: 73.8478,
-      sequence: 2,
-      scheduledArrival: "08:45:00",
-      scheduledDeparture: "08:45:00",
-    },
-    stops: [
-      {
-        stopId: `stop_${r.id}_0`,
-        name: r.origin || "Origin",
-        lat: 18.5204,
-        lon: 73.8567,
-        sequence: 1,
-        scheduledArrival: "08:00:00",
-        scheduledDeparture: "08:00:00",
-      },
-      {
-        stopId: `stop_${r.id}_99`,
-        name: r.destination || "Destination",
-        lat: 18.5308,
-        lon: 73.8478,
-        sequence: 2,
-        scheduledArrival: "08:45:00",
-        scheduledDeparture: "08:45:00",
-      },
-    ],
-    shape: [
-      [73.8567, 18.5204],
-      [73.8478, 18.5308],
-    ],
-  };
+  // No invented placeholder stops: without real GTFS stop data there is no journey.
+  return null;
 }
 
 /**
