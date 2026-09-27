@@ -4,10 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Locate, Maximize2, Navigation, Radio } from "lucide-react";
 import { getMapConfig } from "@/lib/maptiler.functions";
-import { isInsidePune, PUNE_CENTER } from "@/lib/geo";
+import { isInsidePune, PUNE_CENTER, type LatLng } from "@/lib/geo";
 import type { MapViewProps } from "./types";
 import type { BusMarkerData } from "./types";
-import { cn } from "@/lib/utils";
 
 const FALLBACK_STYLE = "/trako-map-style.json";
 
@@ -193,7 +192,7 @@ export default function MapCanvas({
 
   // Wait for the server-provided style before creating the map; creating it early with a
   // guessed style meant the map never re-initialised when the real style arrived.
-  const styleUrl: string | Record<string, unknown> | null = config?.style ?? (isError ? FALLBACK_STYLE : null);
+  const styleUrl: string | null = config?.style ?? (isError ? FALLBACK_STYLE : null);
 
   const start = center ?? user ?? PUNE_CENTER;
 
@@ -858,7 +857,7 @@ export default function MapCanvas({
 
   return (
     <div
-      className={cn("trako-map-wrapper relative w-full h-[60vh] max-h-[60dvh] sm:h-[65vh] sm:max-h-[65dvh] lg:h-full lg:max-h-full overflow-hidden select-none", className)}
+      className={`trako-map-wrapper relative w-full overflow-hidden select-none ${className && /(^|\s)(size-|h-)/.test(className) ? "h-full" : "h-[60vh] max-h-[60dvh] sm:h-[65vh] sm:max-h-[65dvh] lg:h-full lg:max-h-full"} ${className}`}
     >
       <div
         ref={holder}

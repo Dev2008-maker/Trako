@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 export type MapConfig = {
-  style: string | Record<string, unknown>;
+  style: string;
 };
 
 /** Production light map style. Match Rapido / Ola clean map style. */

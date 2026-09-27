@@ -175,8 +175,7 @@ export function RouteDetailsSheet({
                 <span className="flex h-7 px-2.5 items-center justify-center rounded-lg bg-primary text-primary-foreground font-display font-black text-sm shadow-xs">
                   Bus {route.shortName}
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-bold text-muted-foreground">
                   {route.operatingStatus}
                 </span>
               </div>
