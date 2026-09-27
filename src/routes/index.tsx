@@ -180,7 +180,7 @@ function Home() {
       let bestDist = Infinity;
       for (let i = 0; i < shape.length; i++) {
         const pt = shape[i];
-        if (!pt) continue;
+        if (!pt || !stop) continue;
         const d = (pt[0] - stop.lon) ** 2 + (pt[1] - stop.lat) ** 2;
         if (d < bestDist) {
           bestDist = d;
@@ -413,7 +413,7 @@ function Home() {
     const busPt = shape[curShapeIdx] ?? shape[0];
 
     const nextPt = shape[Math.min(curShapeIdx + 1, shape.length - 1)] ?? busPt;
-    const heading = calcBearing(busPt, nextPt);
+    const heading = busPt && nextPt ? calcBearing(busPt, nextPt) : 0;
 
     const isTracking = journeyState === "active" || journeyState === "completed";
     const travelled = isTracking && curShapeIdx > 0 ? shape.slice(0, curShapeIdx + 1) : undefined;
