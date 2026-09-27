@@ -171,7 +171,7 @@ export function getAllExplorerRoutes(): GtfsExplorerRoute[] {
 export async function getRouteDetailsAsync(routeId: string): Promise<GtfsRouteDetail | null> {
   try {
     const mod = await import("@/data/gtfsRouteDetails.json");
-    const details = mod.default as Record<string, GtfsRouteDetail>;
+    const details = mod.default as unknown as Record<string, GtfsRouteDetail>;
     return details[routeId] ?? null;
   } catch (err) {
     console.error("Failed to load route details lazily:", err);
