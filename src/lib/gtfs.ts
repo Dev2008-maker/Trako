@@ -62,7 +62,7 @@ export type GtfsJourney = {
 };
 
 const allRoutes: GtfsRoute[] = gtfsRoutesData;
-const keyJourneys: GtfsJourney[] = gtfsKeyJourneysData;
+const keyJourneys: GtfsJourney[] = gtfsKeyJourneysData as unknown as GtfsJourney[];
 
 // Quick index by routeId
 const journeyMap = new Map<string, GtfsJourney>();

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Locate, Maximize2, Navigation, Radio } from "lucide-react";
 import { getMapConfig } from "@/lib/maptiler.functions";
-import { isInsidePune, PUNE_CENTER } from "@/lib/geo";
+import { isInsidePune, PUNE_CENTER, type LatLng } from "@/lib/geo";
 import type { MapViewProps } from "./types";
 import type { BusMarkerData } from "./types";
 import { cn } from "@/lib/utils";
