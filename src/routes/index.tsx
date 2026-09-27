@@ -422,7 +422,7 @@ function Home() {
     return {
       travelledLine: travelled,
       remainingLine: remaining.length > 0 ? remaining : shape,
-      currentBusPosition: { lat: busPt[1], lon: busPt[0] },
+      currentBusPosition: busPt ? { lat: busPt[1], lon: busPt[0] } : null,
       currentBusHeading: heading,
     };
   }, [selectedJourney, currentShapeIndex, journeyState]);

@@ -48,7 +48,7 @@ export type JourneyCompletedCardProps = {
   distanceKm: number;
   totalStops: number;
   fareAmount: number;
-  departureTimeStr?: string;
+  departureTimeStr?: string | undefined;
   arrivalTimeStr?: string;
   onRepeatJourney: () => void;
   onGoHome: () => void;
