@@ -193,7 +193,7 @@ export default function MapCanvas({
 
   // Wait for the server-provided style before creating the map; creating it early with a
   // guessed style meant the map never re-initialised when the real style arrived.
-  const styleUrl: string | Record<string, unknown> | null = config?.style ?? (isError ? FALLBACK_STYLE : null);
+  const styleUrl: string | null = config?.style ?? (isError ? FALLBACK_STYLE : null);
 
   const start = center ?? user ?? PUNE_CENTER;
 
