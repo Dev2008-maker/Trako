@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { distanceMeters, minutesFromNow, type LatLng } from "./geo";
+import { getRouteShapeCoordinates } from "@/services/gtfsShapes";
 
 export type Stop = {
   id: string;
@@ -320,11 +321,21 @@ export function routeDetailQuery(routeId: string | undefined) {
         sunday: generateDepartures(6, 0, 22, 30, 20),
       };
 
+      const rawShape = shape[0]?.coordinates;
+      const resolvedLine =
+        rawShape && rawShape.length >= 2
+          ? rawShape
+          : getRouteShapeCoordinates(
+              route?.route_no || actualRouteId,
+              stopList.map((s) => [s.stop.lon, s.stop.lat]),
+            );
+
       return {
         route: route ?? null,
         stops: stopList,
-        line: shape[0]?.coordinates ?? [],
+        line: resolvedLine,
         firstBus: "05:30 AM",
+
         lastBus: "11:15 PM",
         frequency:
           route?.route_no === "103"

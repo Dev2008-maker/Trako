@@ -29,12 +29,8 @@ export function HomeBottomSheet({
   onSnapChange,
 }: HomeBottomSheetProps) {
   const [snap, setSnap] = useState<SnapPosition>(initialSnap);
-  const [heightPx, setHeightPx] = useState<number>(() => {
-    if (typeof window !== "undefined") {
-      return Math.round(window.innerHeight * SNAP_RATIOS[initialSnap]);
-    }
-    return 480;
-  });
+  // Initialize to null so server and client hydration render identical markup (60dvh)
+  const [heightPx, setHeightPx] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const dragStartY = useRef(0);
@@ -56,7 +52,7 @@ export function HomeBottomSheet({
     [onSnapChange],
   );
 
-  // Adjust height on window resize
+  // Adjust height on window resize and initial client mount
   useEffect(() => {
     const handleResize = () => {
       const targetH = Math.round(window.innerHeight * SNAP_RATIOS[snap]);
@@ -85,7 +81,7 @@ export function HomeBottomSheet({
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true);
     dragStartY.current = e.clientY;
-    dragStartHeight.current = heightPx;
+    dragStartHeight.current = heightPx ?? Math.round(window.innerHeight * SNAP_RATIOS[snap]);
     hasDraggedFar.current = false;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
@@ -122,7 +118,8 @@ export function HomeBottomSheet({
     }
 
     // Determine closest snap position based on final height ratio
-    const ratio = heightPx / window.innerHeight;
+    const currentH = heightPx ?? Math.round(window.innerHeight * SNAP_RATIOS[snap]);
+    const ratio = currentH / window.innerHeight;
     if (ratio < 0.69) {
       snapTo("peek");
     } else if (ratio < 0.865) {
@@ -132,12 +129,17 @@ export function HomeBottomSheet({
     }
   };
 
+  const defaultHeight = `${Math.round(SNAP_RATIOS[initialSnap] * 100)}dvh`;
+  const computedHeight = heightPx !== null ? `${heightPx}px` : defaultHeight;
+
   return (
     <div
       id="trako-home-bottom-sheet"
+      suppressHydrationWarning
       style={{
-        height: `${heightPx}px`,
-        transition: isDragging ? "none" : "height 0.32s cubic-bezier(0.16, 1, 0.3, 1)",
+        height: computedHeight,
+        transition:
+          isDragging || heightPx === null ? "none" : "height 0.32s cubic-bezier(0.16, 1, 0.3, 1)",
       }}
       className={`fixed bottom-0 inset-x-0 mx-auto max-w-lg z-20 flex flex-col pointer-events-none select-none ${className}`}
     >
@@ -157,9 +159,11 @@ export function HomeBottomSheet({
           onPointerCancel={handlePointerUp}
           role="slider"
           aria-label="Drag sheet height"
-          aria-valuenow={Math.round(
-            (heightPx / (typeof window !== "undefined" ? window.innerHeight : 800)) * 100,
-          )}
+          aria-valuenow={
+            heightPx !== null && typeof window !== "undefined"
+              ? Math.round((heightPx / window.innerHeight) * 100)
+              : Math.round(SNAP_RATIOS[snap] * 100)
+          }
           className="w-full pt-3 pb-2 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none bg-white shrink-0 hover:bg-slate-50/60 transition-colors"
         >
           <div className="h-1.5 w-12 rounded-full bg-slate-300 transition-colors" />

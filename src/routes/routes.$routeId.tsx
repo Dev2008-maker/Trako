@@ -55,6 +55,7 @@ import {
   type LatLng,
 } from "@/lib/geo";
 import { useCurrentLocation } from "@/hooks/useCurrentLocation";
+import { useLiveVehicle } from "@/hooks/useLiveVehicle";
 
 type RouteSearch = {
   tracking?: boolean;
@@ -128,8 +129,10 @@ function RouteDetailsPage() {
 
   // Follow Bus camera tracking mode
   const [followBus, setFollowBus] = useState<boolean>(true);
+  const [journeyFitKey, setJourneyFitKey] = useState<number>(0);
 
   // Speed multiplier for testing: 1x (Realtime GTFS standard), 2x, 5x, 10x, 30x
+
   const [speedMultiplier, setSpeedMultiplier] = useState<number>(1);
 
   // Alarm Trigger Mode: 2 stops before, 1 stop before, 500m radius, 250m radius
@@ -470,6 +473,18 @@ function RouteDetailsPage() {
     };
   }, [routeData?.line, timingProfile, elapsedSeconds]);
 
+  // Real-time GTFS Realtime Vehicle Position with 8-second polling & Demo Mode fallback
+  const liveVehicle = useLiveVehicle({
+    routeId: routeData?.route?.id ?? routeId,
+    routeNo: routeData?.route?.route_no,
+    tripId: routeData?.tripId,
+    isTracking,
+    polyline: routeData?.line,
+    demoPosition: liveState.currentPoint,
+    demoBearing: liveState.bearing,
+    demoSpeed: 26,
+  });
+
   // Trigger stop alarms when approaching destination
   const lastAlarmFiredRef = useRef<string>("");
 
@@ -483,40 +498,60 @@ function RouteDetailsPage() {
   const fetchTraffic = useCallback(async () => {
     if (!timingProfile) return;
 
-    const dest = timingProfile.subStops[timingProfile.subStops.length - 1]?.stop;
+    // Bus current GPS -> destination stop
+    const dest =
+      (destinationStopId && routeData?.stops
+        ? routeData.stops.find((s) => s.stop.id === destinationStopId)?.stop
+        : null) ?? timingProfile.subStops[timingProfile.subStops.length - 1]?.stop;
     if (!dest) return;
 
-    const curPos = liveState.currentPoint ?? timingProfile.subStops[0]?.stop;
-    if (!curPos) return;
+    const curBusGps =
+      activeBusLocation ??
+      liveVehicle.currentPosition ??
+      liveState.currentPoint ??
+      timingProfile.subStops[0]?.stop;
+    if (!curBusGps) return;
+
+    const scheduledMins = liveState.etaMinutes || timingProfile.totalDurationMins;
+    const fallbackDist = liveState.remainingMeters || routeData?.totalDistanceMeters || 0;
 
     setIsTrafficLoading(true);
     try {
       const res = await fetchLiveTrafficETA(
-        curPos,
+        curBusGps,
         { lat: dest.lat, lon: dest.lon },
-        liveState.etaMinutes || timingProfile.totalDurationMins,
+        scheduledMins,
+        fallbackDist,
       );
       setTrafficData(res);
       setTrafficLastChecked(Date.now());
     } catch {
-      // Fallback is handled automatically
+      // Fallback is handled automatically in fetchLiveTrafficETA
     } finally {
       setIsTrafficLoading(false);
     }
-  }, [timingProfile, liveState.currentPoint, liveState.etaMinutes]);
+  }, [
+    timingProfile,
+    destinationStopId,
+    routeData?.stops,
+    routeData?.totalDistanceMeters,
+    activeBusLocation,
+    liveVehicle.currentPosition,
+    liveState.currentPoint,
+    liveState.etaMinutes,
+    liveState.remainingMeters,
+  ]);
 
-  // Poll traffic every 45s during active journey
+  // Poll traffic and live ETA every 20 seconds
   useEffect(() => {
     fetchTraffic();
 
-    if (!isTracking) return;
-
     const interval = setInterval(() => {
       fetchTraffic();
-    }, 45000);
+    }, 20000); // Strict 20-second update requirement
 
     return () => clearInterval(interval);
-  }, [isTracking, fetchTraffic]);
+  }, [fetchTraffic]);
 
   // Smart Stop Alarm Trigger logic
   useEffect(() => {
@@ -607,6 +642,7 @@ function RouteDetailsPage() {
     lastAlarmFiredRef.current = "";
     setIsTracking(true);
     setFollowBus(true);
+    setJourneyFitKey((k) => k + 1);
 
     addNotification({
       type: "journey_started",
@@ -666,7 +702,27 @@ function RouteDetailsPage() {
     );
   }
 
-  if (isError || !routeData?.route) {
+  if (isError) {
+    return (
+      <AppShell title="Error Loading Route">
+        <div className="trako-card p-6 text-center">
+          <Bus className="mx-auto size-10 text-destructive" />
+          <h2 className="mt-3 text-base font-bold text-destructive">Error loading route</h2>
+          <p className="mt-1 text-xs font-mono text-destructive break-all">
+            {(error as Error)?.message || String(error)}
+          </p>
+          <Link
+            to="/routes"
+            className="mt-4 inline-flex items-center gap-1 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm"
+          >
+            <ArrowLeft className="size-4" /> Browse all routes
+          </Link>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!routeData?.route) {
     return (
       <AppShell title="Route Not Found">
         <div className="trako-card p-6 text-center">
@@ -710,16 +766,25 @@ function RouteDetailsPage() {
     stopTimes[liveState.activeStopIndex]?.stop ?? journey?.boarding_stop ?? boardingStop;
   const nextLiveStop = stopTimes[liveState.activeStopIndex + 1]?.stop ?? null;
 
-  // Animated live bus marker with heading rotation
-  const liveBuses = liveState.currentPoint
+  // Current tracked bus position and bearing (smoothly interpolated)
+  const activeBusLocation = isTracking
+    ? (liveVehicle.currentPosition ?? liveState.currentPoint)
+    : null;
+  const activeBusBearing = liveVehicle.isLive ? liveVehicle.bearing : liveState.bearing;
+
+  // Animated live bus marker with heading rotation (PMPML GTFS-RT / Demo)
+  const liveBuses = activeBusLocation
     ? [
         {
-          id: "journey-bus",
-          lat: liveState.currentPoint.lat,
-          lon: liveState.currentPoint.lon,
+          id: liveVehicle.isLive
+            ? liveVehicle.vehicleId || `live-bus-${route.route_no}`
+            : `demo-bus-${route.route_no}`,
+          lat: activeBusLocation.lat,
+          lon: activeBusLocation.lon,
           label: route.route_no,
-          status: "live" as const,
-          bearing: liveState.bearing,
+          status: (liveVehicle.isLive ? "live" : "last_seen") as "live" | "last_seen",
+          isDemo: liveVehicle.isDemo,
+          bearing: activeBusBearing,
         },
       ]
     : [];
@@ -783,10 +848,16 @@ function RouteDetailsPage() {
           {/* Service badges and timetable button */}
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5">
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-600/20">
-                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                {status}
-              </span>
+              {liveVehicle.isLive ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-black text-emerald-800 border border-emerald-300">
+                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  LIVE
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2.5 py-0.5 text-[11px] font-extrabold text-purple-700 border border-purple-200">
+                  DEMO
+                </span>
+              )}
               <span className="rounded-full bg-tint px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground">
                 {frequency}
               </span>
@@ -802,17 +873,25 @@ function RouteDetailsPage() {
             </button>
           </div>
 
-          {/* Quick Schedule Row */}
-          <div className="grid grid-cols-3 gap-2 rounded-xl bg-tint p-2 text-center text-xs">
+          {/* Quick Schedule & Live ETA Row */}
+          <div className="grid grid-cols-4 gap-1.5 rounded-xl bg-tint p-2 text-center text-xs">
             <div>
+              <p className="text-[10px] font-bold uppercase text-muted-foreground">Live ETA</p>
+              <p className="font-extrabold text-primary">
+                {trafficData?.liveETAMinutes
+                  ? `${trafficData.liveETAMinutes}m`
+                  : `${totalDurationMinutes}m`}
+              </p>
+            </div>
+            <div className="border-l border-border">
               <p className="text-[10px] font-bold uppercase text-muted-foreground">First Bus</p>
               <p className="font-extrabold text-foreground">{firstBus}</p>
             </div>
-            <div className="border-x border-border">
+            <div className="border-l border-border">
               <p className="text-[10px] font-bold uppercase text-muted-foreground">Last Bus</p>
               <p className="font-extrabold text-foreground">{lastBus}</p>
             </div>
-            <div>
+            <div className="border-l border-border">
               <p className="text-[10px] font-bold uppercase text-muted-foreground">Fare</p>
               <p className="font-extrabold text-primary">{fare}</p>
             </div>
@@ -831,9 +910,9 @@ function RouteDetailsPage() {
             <MapView
               className="size-full"
               center={
-                followBus && liveState.currentPoint
-                  ? liveState.currentPoint
-                  : (liveState.currentPoint ??
+                followBus && activeBusLocation
+                  ? activeBusLocation
+                  : (activeBusLocation ??
                     (boardingStop ? { lat: boardingStop.lat, lon: boardingStop.lon } : PUNE_CENTER))
               }
               stops={stops.map((s) => s.stop)}
@@ -845,9 +924,11 @@ function RouteDetailsPage() {
                 liveState.remainingCoords.length > 0 ? liveState.remainingCoords : routeData.line
               }
               completedLine={liveState.completedCoords}
-              lineColor="#388bfd"
+              lineColor="#800080"
+              completedLineColor="#10b981"
               trafficSegments={trafficData?.trafficSegments}
               fitBounds={!isTracking}
+              fitBoundsKey={journeyFitKey}
               buses={liveBuses}
               followBus={followBus}
               onToggleFollowBus={() => setFollowBus((prev) => !prev)}
@@ -864,31 +945,31 @@ function RouteDetailsPage() {
         {/* Traffic Status / Google Routes Live Indicator */}
         <div className="flex items-center justify-between rounded-xl bg-tint/60 px-3 py-1.5 text-[11px] border border-border/40">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-muted-foreground">Traffic:</span>
-            <span className="flex items-center gap-1 font-bold text-emerald-700">
-              <span className="size-2 rounded-full bg-emerald-500" /> Fast
+            <span className="font-semibold text-muted-foreground">Live Route:</span>
+            <span className="font-extrabold text-primary">
+              {trafficData?.liveETAMinutes ?? liveState.etaMinutes} min ETA
             </span>
-            <span className="flex items-center gap-1 font-bold text-amber-700">
-              <span className="size-2 rounded-full bg-amber-500" /> Slow
-            </span>
-            <span className="flex items-center gap-1 font-bold text-rose-700">
-              <span className="size-2 rounded-full bg-rose-500" /> Jam
+            <span>•</span>
+            <span className="font-bold text-foreground">Arr {trafficData?.arrivalTime ?? "—"}</span>
+            <span>•</span>
+            <span className="font-semibold text-muted-foreground">
+              {trafficData?.formattedDistance ?? formatDistance(liveState.remainingMeters)}
             </span>
           </div>
 
           <div className="flex items-center gap-1.5 text-muted-foreground">
-            <span>
+            <span className="text-[10px] font-bold">
               {isTrafficLoading
-                ? "Checking live traffic…"
-                : trafficData?.isAvailable
-                  ? "Google Routes API"
+                ? "Updating ETA…"
+                : trafficData?.source === "google_routes"
+                  ? "Google Routes (20s)"
                   : "GTFS Timetable"}
             </span>
             <button
               type="button"
               onClick={fetchTraffic}
               disabled={isTrafficLoading}
-              title="Refresh live traffic"
+              title="Refresh live ETA"
               className="grid size-5 place-items-center rounded hover:text-foreground disabled:opacity-50"
             >
               <RefreshCw
@@ -906,11 +987,22 @@ function RouteDetailsPage() {
             {/* Top row with Live indicator and Speed Controls */}
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-3">
               <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-black text-emerald-800 border border-emerald-300 shadow-2xs">
-                  <span className="size-2 rounded-full bg-emerald-500 animate-ping" />
-                  LIVE TRACKING
-                </span>
+                {liveVehicle.isLive ? (
+                  <span className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-black text-emerald-800 border border-emerald-300 shadow-2xs">
+                    <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                    LIVE
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 rounded-full bg-purple-100 px-2.5 py-1 text-xs font-black text-purple-800 border border-purple-200 shadow-2xs">
+                    DEMO
+                  </span>
+                )}
                 <span className="text-xs font-extrabold text-primary">BUS {route.route_no}</span>
+                {liveVehicle.isLive && liveVehicle.rawVehicle?.licensePlate && (
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase bg-slate-100 px-1.5 py-0.5 rounded-md">
+                    {liveVehicle.rawVehicle.licensePlate}
+                  </span>
+                )}
               </div>
 
               {/* Speed Controls: 1x (Realtime), 2x, 5x, 10x, 30x */}
@@ -938,31 +1030,70 @@ function RouteDetailsPage() {
               </div>
             </div>
 
-            {/* Real-time Arrival Countdown Header */}
-            <div className="rounded-2xl bg-gradient-to-r from-primary/10 via-purple-100/40 to-primary/5 p-3.5 border border-primary/20">
-              <div className="flex items-center justify-between">
+            {/* Real-time Arrival Countdown & Live Traffic ETA Header */}
+            <div className="rounded-2xl bg-gradient-to-r from-primary/10 via-purple-100/40 to-primary/5 p-3.5 border border-primary/20 space-y-2.5">
+              <div className="flex items-start justify-between">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Destination Arrival Countdown
+                    Live ETA to Destination
                   </span>
-                  <div className="text-2xl font-black text-primary tracking-tight">
-                    {formatCountdown(liveState.totalRemainingSec)}
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-black text-primary tracking-tight">
+                      {trafficData?.liveETAMinutes ?? liveState.etaMinutes} min
+                    </span>
+                    <span className="text-xs font-bold text-muted-foreground">
+                      ({formatCountdown(liveState.totalRemainingSec)})
+                    </span>
                   </div>
+                  <p className="mt-0.5 text-xs font-semibold text-foreground/80">
+                    Expected Arrival:{" "}
+                    <span className="font-extrabold text-foreground">
+                      {trafficData?.arrivalTime ?? "Calculating…"}
+                    </span>
+                  </p>
                 </div>
 
-                <div className="text-right">
-                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-0.5 text-[11px] font-extrabold text-emerald-800 border border-emerald-300">
-                    <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    {trafficData?.badgeText ?? "On Time"}
+                <div className="text-right space-y-1">
+                  {/* Traffic Delay Badge (+/- minutes) */}
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-extrabold border ${
+                      trafficData?.badgeVariant === "rose"
+                        ? "bg-rose-100 text-rose-800 border-rose-300"
+                        : trafficData?.badgeVariant === "amber"
+                          ? "bg-amber-100 text-amber-800 border-amber-300"
+                          : "bg-emerald-100 text-emerald-800 border-emerald-300"
+                    }`}
+                  >
+                    <span
+                      className={`size-1.5 rounded-full ${
+                        trafficData?.badgeVariant === "rose"
+                          ? "bg-rose-500 animate-ping"
+                          : trafficData?.badgeVariant === "amber"
+                            ? "bg-amber-500 animate-pulse"
+                            : "bg-emerald-500 animate-pulse"
+                      }`}
+                    />
+                    {trafficData
+                      ? trafficData.delayMinutes > 0
+                        ? `+${trafficData.delayMinutes} min Delay`
+                        : trafficData.delayMinutes < 0
+                          ? `${trafficData.delayMinutes} min Early`
+                          : "On Time"
+                      : "On Time (GTFS)"}
                   </span>
-                  <p className="mt-1 text-xs font-bold text-foreground">
+                  <p className="text-xs font-bold text-foreground">
                     {liveState.stopsRemaining} stops remaining
+                  </p>
+                  <p className="text-[10px] font-medium text-muted-foreground">
+                    {trafficData?.source === "google_routes"
+                      ? "⚡ Live Traffic Aware"
+                      : "📅 GTFS Scheduled"}
                   </p>
                 </div>
               </div>
 
               {/* Google Maps style Blue Progress Bar */}
-              <div className="mt-3">
+              <div>
                 <div className="flex items-center justify-between text-[11px] mb-1">
                   <span className="font-semibold text-muted-foreground">Route Progress</span>
                   <span className="font-bold text-primary">
@@ -1002,26 +1133,44 @@ function RouteDetailsPage() {
               )}
             </div>
 
-            {/* Dynamic Travel Stats */}
-            <div className="grid grid-cols-3 gap-2 rounded-xl bg-tint p-2.5 text-center text-xs">
+            {/* Dynamic Travel Stats (ETA, Arrival Time, Delay, Remaining Distance) */}
+            <div className="grid grid-cols-4 gap-1.5 rounded-xl bg-tint p-2.5 text-center text-xs border border-border/60">
               <div>
-                <p className="text-[10px] font-bold uppercase text-muted-foreground">
-                  Distance Left
-                </p>
-                <p className="font-extrabold text-foreground">
-                  {formatDistance(liveState.remainingMeters)}
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">ETA</p>
+                <p className="font-extrabold text-primary">
+                  {trafficData?.liveETAMinutes ?? liveState.etaMinutes} min
                 </p>
               </div>
-              <div className="border-x border-border">
-                <p className="text-[10px] font-bold uppercase text-muted-foreground">Destination</p>
-                <p className="font-extrabold truncate text-primary">{destStop.name}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase text-muted-foreground">
-                  Walk at Dest
+              <div className="border-l border-border">
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">Arrival</p>
+                <p className="font-extrabold text-foreground truncate">
+                  {trafficData?.arrivalTime ?? "—"}
                 </p>
-                <p className="font-extrabold text-foreground">
-                  {walkToDestM !== null ? formatWalk(walkToDestM) : "At stop"}
+              </div>
+              <div className="border-l border-border">
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">Delay</p>
+                <p
+                  className={`font-extrabold truncate ${
+                    (trafficData?.delayMinutes ?? 0) > 0
+                      ? "text-rose-600"
+                      : (trafficData?.delayMinutes ?? 0) < 0
+                        ? "text-emerald-600"
+                        : "text-emerald-700"
+                  }`}
+                >
+                  {trafficData
+                    ? trafficData.delayMinutes > 0
+                      ? `+${trafficData.delayMinutes}m`
+                      : trafficData.delayMinutes < 0
+                        ? `${trafficData.delayMinutes}m`
+                        : "0m"
+                    : "0m"}
+                </p>
+              </div>
+              <div className="border-l border-border">
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">Distance</p>
+                <p className="font-extrabold text-foreground truncate">
+                  {trafficData?.formattedDistance ?? formatDistance(liveState.remainingMeters)}
                 </p>
               </div>
             </div>

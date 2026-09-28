@@ -26,7 +26,7 @@ export const Route = createFileRoute("/routes/")({
 });
 
 function RoutesIndexPage() {
-  const { data: routes = [], isLoading } = useQuery(routesQuery);
+  const { data: routes = [], isLoading, error } = useQuery(routesQuery);
   const [searchTerm, setSearchTerm] = useState("");
 
   const filtered = routes.filter((r) => {
@@ -58,6 +58,10 @@ function RoutesIndexPage() {
         <div className="space-y-2.5">
           {isLoading ? (
             <p className="p-4 text-center text-xs text-muted-foreground">Loading routes…</p>
+          ) : error ? (
+            <p className="p-4 text-center text-xs text-destructive font-mono break-all">
+              Error loading routes: {(error as Error)?.message || String(error)}
+            </p>
           ) : filtered.length === 0 ? (
             <div className="trako-card p-6 text-center text-muted-foreground">
               <Bus className="mx-auto size-8 text-muted-foreground/60" />

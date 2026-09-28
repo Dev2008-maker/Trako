@@ -24,12 +24,14 @@ export default function MapCanvas({
   buses = [],
   line,
   completedLine,
-  lineColor = "#388bfd",
+  lineColor = "#800080",
+  completedLineColor = "#10b981",
   trafficSegments,
   boardingStopId,
   destinationStopId,
   showIntermediateStops = false,
   fitBounds = false,
+  fitBoundsKey,
   hideControls = false,
   onStopClick,
   className = "",
@@ -78,31 +80,79 @@ export default function MapCanvas({
     });
     instance.on("error", (e) => console.warn("MapLibre error:", e));
     map.current = instance;
+    const activeStopMarkers = stopMarkers.current;
+    const activeBusMarkers = busMarkers.current;
     return () => {
       instance.remove();
       map.current = null;
       setReady(false);
-      stopMarkers.current.clear();
-      busMarkers.current.clear();
+      activeStopMarkers.clear();
+      activeBusMarkers.clear();
       userMarker.current = null;
       destMarker.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config?.style]);
 
-  // fit bounds to complete route shape if requested
+  // Fit bounds to complete route shape, boarding stop, bus, and destination
   useEffect(() => {
-    if (!ready || !map.current || !fitBounds || !line || line.length < 2) return;
+    if (!ready || !map.current || (!fitBounds && fitBoundsKey === undefined)) return;
     try {
-      const bounds = new maplibregl.LngLatBounds(line[0], line[0]);
-      for (const coord of line) {
+      const coordsToInclude: [number, number][] = [];
+
+      // 1. Full line coords
+      if (line && line.length > 0) coordsToInclude.push(...line);
+      if (completedLine && completedLine.length > 0) coordsToInclude.push(...completedLine);
+
+      // 2. Boarding stop
+      if (boardingStopId && stops) {
+        const b = stops.find((s) => s.id === boardingStopId);
+        if (b) coordsToInclude.push([b.lon, b.lat]);
+      }
+
+      // 3. Destination stop / destination prop
+      if (destinationStopId && stops) {
+        const d = stops.find((s) => s.id === destinationStopId);
+        if (d) coordsToInclude.push([d.lon, d.lat]);
+      } else if (destination) {
+        coordsToInclude.push([destination.lon, destination.lat]);
+      }
+
+      // 4. Live / active buses
+      if (buses && buses.length > 0) {
+        for (const b of buses) coordsToInclude.push([b.lon, b.lat]);
+      }
+
+      if (coordsToInclude.length < 2) return;
+
+      const bounds = new maplibregl.LngLatBounds(coordsToInclude[0]!, coordsToInclude[0]!);
+      for (const coord of coordsToInclude) {
         bounds.extend(coord);
       }
-      map.current.fitBounds(bounds, { padding: 60, maxZoom: 15, duration: 800 });
+
+      const bottom = getBottomCameraPadding(Boolean(user || onToggleDemoMode));
+      map.current.fitBounds(bounds, {
+        padding: { top: 60, bottom: Math.min(bottom, 220), left: 40, right: 40 },
+        maxZoom: 15.2,
+        duration: 850,
+      });
     } catch (e) {
       console.warn("Fit bounds error:", e);
     }
-  }, [ready, fitBounds, line]);
+  }, [
+    ready,
+    fitBounds,
+    fitBoundsKey,
+    line,
+    completedLine,
+    boardingStopId,
+    destinationStopId,
+    destination,
+    buses,
+    stops,
+    user,
+    onToggleDemoMode,
+  ]);
 
   // keep the view following the requested centre with bottom camera padding
   useEffect(() => {
@@ -285,33 +335,33 @@ export default function MapCanvas({
     }
   }, [ready, destination]);
 
-  // route line (Google Maps light blue) & completed route line (grey)
+  // route line (Purple remaining route) & completed route line (Green traveled portion)
   useEffect(() => {
     const instance = map.current;
     if (!ready || !instance) return;
 
-    // Remaining / full route line
-    const activeCoords = line ?? [];
-    const data = {
+    // Background white casing for crisp contrast on light maps
+    const allCoords = [...(completedLine ?? []), ...(line ?? [])];
+    const casingData = {
       type: "Feature" as const,
       properties: {},
-      geometry: { type: "LineString" as const, coordinates: activeCoords },
+      geometry: { type: "LineString" as const, coordinates: allCoords },
     };
-    const source = instance.getSource("trako-route");
-    if (source && "setData" in source) {
-      (source as maplibregl.GeoJSONSource).setData(data);
-    } else {
-      instance.addSource("trako-route", { type: "geojson", data });
+    const casingSource = instance.getSource("trako-route-casing");
+    if (casingSource && "setData" in casingSource) {
+      (casingSource as maplibregl.GeoJSONSource).setData(casingData);
+    } else if (allCoords.length >= 2) {
+      instance.addSource("trako-route-casing", { type: "geojson", data: casingData });
       instance.addLayer({
-        id: "trako-route-line",
+        id: "trako-route-casing-line",
         type: "line",
-        source: "trako-route",
+        source: "trako-route-casing",
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": lineColor ?? "#388bfd", "line-width": 5.5, "line-opacity": 0.9 },
+        paint: { "line-color": "#ffffff", "line-width": 8.5, "line-opacity": 0.9 },
       });
     }
 
-    // Completed route line (grey)
+    // Traveled / completed portion (Green #10b981)
     const completedCoords = completedLine ?? [];
     const compData = {
       type: "Feature" as const,
@@ -328,11 +378,40 @@ export default function MapCanvas({
         type: "line",
         source: "trako-route-completed",
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#94a3b8", "line-width": 5.5, "line-opacity": 0.9 },
+        paint: {
+          "line-color": completedLineColor ?? "#10b981",
+          "line-width": 6,
+          "line-opacity": 0.95,
+        },
       });
     }
 
-    // Traffic-colored segments (Green, Orange, Red)
+    // Remaining / active route line (Purple #800080)
+    const activeCoords = line ?? [];
+    const data = {
+      type: "Feature" as const,
+      properties: {},
+      geometry: { type: "LineString" as const, coordinates: activeCoords },
+    };
+    const source = instance.getSource("trako-route");
+    if (source && "setData" in source) {
+      (source as maplibregl.GeoJSONSource).setData(data);
+    } else {
+      instance.addSource("trako-route", { type: "geojson", data });
+      instance.addLayer({
+        id: "trako-route-line",
+        type: "line",
+        source: "trako-route",
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: {
+          "line-color": lineColor ?? "#800080",
+          "line-width": 6,
+          "line-opacity": 0.95,
+        },
+      });
+    }
+
+    // Traffic-colored segments (if available)
     const trafficData = {
       type: "FeatureCollection" as const,
       features: (trafficSegments ?? []).map((seg, idx) => ({
@@ -345,7 +424,7 @@ export default function MapCanvas({
     const trafficSource = instance.getSource("trako-traffic");
     if (trafficSource && "setData" in trafficSource) {
       (trafficSource as maplibregl.GeoJSONSource).setData(trafficData);
-    } else {
+    } else if ((trafficSegments ?? []).length > 0) {
       instance.addSource("trako-traffic", { type: "geojson", data: trafficData });
       instance.addLayer({
         id: "trako-traffic-line",
@@ -359,7 +438,7 @@ export default function MapCanvas({
         },
       });
     }
-  }, [ready, line, completedLine, lineColor, trafficSegments]);
+  }, [ready, line, completedLine, lineColor, completedLineColor, trafficSegments]);
 
   function recenter() {
     const target = user ?? center ?? PUNE_CENTER;
@@ -466,16 +545,24 @@ function animateMarker(
   marker: maplibregl.Marker,
   from: [number, number],
   to: [number, number],
-  duration = 900,
+  duration = 750,
 ) {
+  const el = marker.getElement() as HTMLElement & { _animId?: number };
+  if (el._animId) {
+    cancelAnimationFrame(el._animId);
+  }
   const startedAt = performance.now();
   const step = (now: number) => {
     const t = Math.min(1, (now - startedAt) / duration);
     const eased = t * (2 - t);
     marker.setLngLat([from[0] + (to[0] - from[0]) * eased, from[1] + (to[1] - from[1]) * eased]);
-    if (t < 1) requestAnimationFrame(step);
+    if (t < 1) {
+      el._animId = requestAnimationFrame(step);
+    } else {
+      el._animId = undefined;
+    }
   };
-  requestAnimationFrame(step);
+  el._animId = requestAnimationFrame(step);
 }
 
 const markerStyles = `

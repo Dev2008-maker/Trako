@@ -29,7 +29,11 @@ export const Route = createFileRoute("/stop/$stopId")({
 function StopDetail() {
   const { stopId } = Route.useParams();
   const { data: stops = [] } = useQuery(stopsQuery);
-  const { data: upcoming = [], isLoading } = useQuery(upcomingAtStopQuery(stopId));
+  const {
+    data: upcoming = [],
+    isLoading,
+    error: upcomingError,
+  } = useQuery(upcomingAtStopQuery(stopId));
   const { pings } = useLiveBuses();
 
   const stop = stops.find((s) => s.id === stopId);
@@ -50,6 +54,10 @@ function StopDetail() {
       </h2>
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading schedule…</p>
+      ) : upcomingError ? (
+        <p className="text-sm text-destructive font-mono break-all">
+          Error loading schedule: {(upcomingError as Error)?.message || String(upcomingError)}
+        </p>
       ) : (
         <ScheduleList buses={upcoming} pings={pings} />
       )}

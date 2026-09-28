@@ -29,13 +29,19 @@ export const Route = createFileRoute("/nearby")({
   component: Nearby,
 });
 
+const FALLBACK_LOCATION: LatLng = { lat: 18.5204, lon: 73.8567 };
+
 function Nearby() {
   const { coords, status, request } = useCurrentLocation();
-  const { data: stops = [], isLoading } = useQuery(stopsQuery);
+  const { data: stops = [], isLoading, error } = useQuery(stopsQuery);
   const [selected, setSelected] = useState<string | null>(null);
   const [favourites] = useState<FavouriteStopItem[]>(() => getFavouriteStops());
 
-  const near = useMemo(() => nearestStops(stops, coords, 12), [stops, coords]);
+  // Use current GPS coordinates or fallback to Pune center (18.5204, 73.8567) if unavailable
+  const activeLocation = coords ?? FALLBACK_LOCATION;
+
+  // Calculate the first 10 nearby stops sorted by distance
+  const near = useMemo(() => nearestStops(stops, activeLocation, 10), [stops, activeLocation]);
   const selectedStop = near.find((n) => n.stop.id === selected)?.stop;
 
   return (
@@ -44,12 +50,8 @@ function Nearby() {
       <div className="h-56 overflow-hidden rounded-2xl border border-border shadow-xs">
         <MapView
           className="size-full"
-          center={
-            selectedStop
-              ? { lat: selectedStop.lat, lon: selectedStop.lon }
-              : (coords ?? PUNE_CENTER)
-          }
-          user={coords}
+          center={selectedStop ? { lat: selectedStop.lat, lon: selectedStop.lon } : activeLocation}
+          user={activeLocation}
           stops={near.map((n) => n.stop)}
           selectedStopId={selected}
           onStopClick={setSelected}
@@ -57,7 +59,7 @@ function Nearby() {
       </div>
 
       <div className="mt-4 space-y-4">
-        {/* Favourite Stops Section (Above Nearby Stops - Requirement 4) */}
+        {/* Favourite Stops Section */}
         {favourites.length > 0 && (
           <section className="space-y-2">
             <div className="flex items-center justify-between">
@@ -105,37 +107,48 @@ function Nearby() {
               <MapPin className="size-3.5 text-primary" />
               Nearby Stops ({near.length})
             </h2>
-            <span className="text-[11px] text-muted-foreground font-medium">Walking distance</span>
+            <span className="text-[11px] text-muted-foreground font-medium">
+              {coords ? "From GPS" : "From Pune Center"}
+            </span>
           </div>
 
           {status === "denied" && (
-            <div className="rounded-xl bg-tint-strong p-3 text-sm">
-              <p className="font-semibold">Location access is needed to find nearby bus stops.</p>
+            <div className="rounded-xl bg-tint-strong p-3 text-xs">
+              <p className="font-semibold text-foreground">
+                Location permission denied — using Pune center (18.5204, 73.8567).
+              </p>
               <button type="button" onClick={request} className="mt-1 font-semibold text-primary">
-                Try again
+                Enable GPS
               </button>
             </div>
           )}
 
-          {isLoading && <p className="text-sm text-muted-foreground">Loading stops…</p>}
-
-          {!isLoading && near.length === 0 && status !== "denied" && (
-            <p className="text-sm text-muted-foreground">
-              No stops found near you yet. Trako currently covers Pune city.
-            </p>
+          {error ? (
+            <div className="trako-card p-4 border border-destructive/40 bg-destructive/5 space-y-2 rounded-xl">
+              <p className="text-xs font-bold text-destructive uppercase tracking-wider">
+                Error from Supabase query:
+              </p>
+              <p className="text-xs font-mono text-destructive break-all bg-background/90 p-2.5 rounded-lg border border-destructive/20">
+                {(error as Error)?.message || String(error)}
+              </p>
+            </div>
+          ) : isLoading ? (
+            <p className="text-sm text-muted-foreground">Loading stops…</p>
+          ) : near.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No stops found near this location.</p>
+          ) : (
+            <div className="space-y-2.5">
+              {near.map(({ stop, meters }) => (
+                <NearbyStopCard
+                  key={stop.id}
+                  stop={stop}
+                  meters={meters}
+                  selected={stop.id === selected}
+                  onSelect={() => setSelected(stop.id)}
+                />
+              ))}
+            </div>
           )}
-
-          <div className="space-y-2.5">
-            {near.map(({ stop, meters }) => (
-              <NearbyStopCard
-                key={stop.id}
-                stop={stop}
-                meters={meters}
-                selected={stop.id === selected}
-                onSelect={() => setSelected(stop.id)}
-              />
-            ))}
-          </div>
         </section>
       </div>
     </AppShell>

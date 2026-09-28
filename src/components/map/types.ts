@@ -21,11 +21,13 @@ export type MapViewProps = {
   line?: [number, number][];
   completedLine?: [number, number][];
   lineColor?: string;
+  completedLineColor?: string;
   trafficSegments?: Array<{ coordinates: [number, number][]; color: string }>;
   boardingStopId?: string | null;
   destinationStopId?: string | null;
   showIntermediateStops?: boolean;
   fitBounds?: boolean;
+  fitBoundsKey?: number | string;
   hideControls?: boolean;
   onStopClick?: (stopId: string) => void;
   className?: string;
