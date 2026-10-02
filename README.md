@@ -1,118 +1,153 @@
-# TRAKO — Pune Transit
+# 🚍 TRAKO — Pune Transit Companion
 
-> Know your bus. Know your stop.
+> **Know your bus. Know your stop. Complete your journey.**
 
-TRAKO is a modern, passenger-first public transit application built for the **Pune Mahanagar Parivahan Mahamandal Ltd (PMPML)** bus network in Pune, India.
+TRAKO is a smart public-transit companion designed to make bus and metro journeys in Pune easier, safer, and more predictable.
 
-It connects commuters directly to real transit data, providing route exploration, timetable schedules, nearest bus stop discovery, live bus tracking, and smart stop arrival alarms.
-
----
-
-## Core Features Currently Implemented
-
-- **Nearest Bus Stops:**
-  - Real-time geolocation to find the nearest PMPML stops within walking distance.
-  - Walking distance estimation and walking time calculated using high-precision Haversine formulas.
-  - Dynamic stop search across 6,700+ registered stops in Pune.
-
-- **Upcoming & Nearby Buses:**
-  - View real-time and scheduled bus departures for any selected stop.
-  - Accurate countdowns, destination terminus details, and route numbers.
-
-- **Complete Route Explorer:**
-  - Browse and search 300+ official PMPML routes.
-  - Interactive route details showing complete stop sequence timelines, route polylines, and distance markers.
-  - Direct links to boarding and destination stops with fare calculations.
-
-- **Live Bus Tracking & Journey Mode:**
-  - Real-time bus simulation and GTFS-Realtime tracking along actual route geometry.
-  - Animated live bus marker with heading rotation and dynamic travel progress indicators.
-  - Jitter-free camera tracking with the **"Following Bus"** mode and manual pan/zoom freedom.
-
-- **Auto Stop Alarm:**
-  - Client-side proximity monitoring toward destination stops.
-  - Dual-mode trigger: "1 Stop Before" or "2 Stops Before" (or distance thresholds).
-  - Melodic chimes via Web Audio API and haptic vibration feedback via `navigator.vibrate`.
-  - Browser notifications for background arrival alerts.
-
-- **User Accounts & Preferences:**
-  - Supabase-backed authentication (email & password) with session persistence.
-  - 100% accessible in Guest Mode without requiring an account.
-  - Travel history and personalized stop alarm preferences stored securely.
+It helps users discover nearby PMPML bus stops, plan journeys, track their trip, receive stop alerts, and combine bus and metro travel.
 
 ---
 
-## Technology Stack
+## 🚀 Why TRAKO?
 
-- **Frontend & Routing:** [React 19](https://react.dev/), [TanStack Start](https://tanstack.com/start), [TanStack Router](https://tanstack.com/router) (type-safe file-based routing with SSR), [TanStack Query](https://tanstack.com/query).
-- **Styling & Components:** [Tailwind CSS](https://tailwindcss.com/), Radix UI primitives, Lucide icons, Sonner toast notifications.
-- **Mapping & Visualization:** [MapLibre GL](https://maplibre.org/), [MapTiler](https://www.maptiler.com/) Vector Street navigation tiles.
-- **Backend & Database:** [Supabase](https://supabase.com/) PostgreSQL hosting the full Pune PMPML GTFS database.
-- **Realtime Feeds:** Protocol buffers (`gtfs-realtime-bindings`) for PMPML GTFS-RT position feeds with graceful simulated interpolation when live hardware telemetry is unavailable.
+Public transportation can be difficult to navigate, especially for students, newcomers, and daily commuters.
 
----
+Common problems include:
 
-## GTFS Database Overview
+- Finding the correct bus stop
+- Knowing which route to take
+- Understanding scheduled timings
+- Knowing when to get off the bus
+- Tracking a journey in real time
+- Planning bus + metro journeys
+- Recovering when a stop is missed
+- Sharing a journey with family or friends
 
-TRAKO runs on a comprehensive Pune PMPML General Transit Feed Specification (GTFS) database hosted on Supabase:
-
-| Table        | Description                                                        |
-| ------------ | ------------------------------------------------------------------ |
-| `stops`      | 6,713 bus stops across Pune, Pimpri-Chinchwad, and suburban areas. |
-| `routes`     | 309 active PMPML bus routes with route numbers and descriptions.   |
-| `trips`      | 15,236 scheduled trips linking routes with schedules.              |
-| `stop_times` | 637,653 individual stop arrival/departure times.                   |
-| `shapes`     | 254,422 geographic coordinates mapping route geometries.           |
-| `calendar`   | Service operation calendars for weekday and weekend schedules.     |
-
-_Note: Live vehicle positions depend on active GTFS-RT feed availability from transit operators; when upstream vehicle GPS feeds are intermittent, TRAKO seamlessly uses timetable interpolation and passenger journey tracking._
+**TRAKO brings these capabilities together in one transit-focused application.**
 
 ---
 
-## Local Development Setup
+## ✨ Key Features
 
-### 1. Prerequisites
+### 📍 Smart Stop Discovery
+Automatically detects the user's location and identifies nearby PMPML bus stops.
 
-- Node.js 20+ (recommended Node 22+)
-- npm or bun
+### 🔔 Smart Stop Alarm
+Set a destination and receive an alert when approaching the selected stop.
 
-### 2. Install Dependencies
+### 🚌 Journey Tracking
+Track your journey with:
 
-```sh
-npm install
-```
+- Current location
+- Route information
+- Upcoming stops
+- Estimated arrival information
+- Journey progress
 
-### 3. Environment Variables
+### 🗺️ Interactive Transit Map
+Map-based visualization for:
 
-Create a `.env` file in the root directory:
+- Current location
+- Bus stops
+- Routes
+- Journey progress
+- Transit information
 
-```env
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
-VITE_MAPTILER_API_KEY=your_maptiler_api_key
-```
+### ⭐ Saved Journeys
+Save frequently used journeys with custom names such as:
 
-### 4. Start Development Server
+- 🏠 Home
+- 🎓 College
+- 💼 Work
 
-```sh
-npm run dev
-```
+### ⏰ Leave At / Arrive By
+Plan a journey around a future departure or arrival time.
 
-The application will be running locally at `http://localhost:3000`.
+### 🚇 Bus + Metro Planning
+TRAKO is designed to support multimodal journeys involving:
 
-### 5. Build for Production
+**PMPML Bus + Pune Metro**
 
-```sh
-npm run build
-npm run preview
-```
+### 🔄 Missed-Stop Recovery
+If a passenger misses their intended stop, TRAKO can help identify the next available recovery option.
+
+### 👥 Family & Community Sharing
+Users can create journey groups and share temporary journey/location information with invited members.
+
+### 🔐 Authentication & Privacy
+Authenticated features use Supabase authentication and database security policies to protect user data.
 
 ---
 
-## Quality Assurance & Verification
+## 🧠 How TRAKO Works
 
-```sh
-npm run lint         # ESLint checks
-npx tsc --noEmit     # TypeScript type safety checks
-npm run build        # Production bundle compilation
-```
+```text
+User Location
+      ↓
+Nearest Stop Detection
+      ↓
+Destination Selection
+      ↓
+Transit Data / Route Processing
+      ↓
+Journey Planning
+      ↓
+Live Journey Tracking
+      ↓
+Stop Alert / Journey Completion
+🏗️ Technology Stack
+Frontend
+React
+TypeScript
+Tailwind CSS
+TanStack Router
+TanStack Query
+Maps
+MapLibre GL
+MapTiler
+Backend & Database
+Supabase
+PostgreSQL
+Supabase Realtime
+Transit Data
+GTFS
+PMPML transit data
+Authentication
+Supabase Auth
+🗃️ Transit Data
+
+TRAKO uses GTFS-based public transit data for route and schedule information.
+
+The application works with transit entities such as:
+
+Routes
+Trips
+Stops
+Stop Times
+Shapes
+Calendars
+
+This enables TRAKO to provide structured transit information instead of relying only on static map locations.
+
+🛠️ Project Architecture
+                 ┌─────────────────────┐
+                 │      TRAKO App      │
+                 └──────────┬──────────┘
+                            │
+             ┌──────────────┼──────────────┐
+             ↓              ↓              ↓
+        Geolocation       Maps        User Input
+             │              │              │
+             └──────────────┼──────────────┘
+                            ↓
+                  Journey / Route Engine
+                            │
+             ┌──────────────┼──────────────┐
+             ↓              ↓              ↓
+          GTFS Data      Supabase      Realtime
+             │              │              │
+             └──────────────┼──────────────┘
+                            ↓
+                   Journey Information
+                            ↓
+                    Smart Stop Alert
