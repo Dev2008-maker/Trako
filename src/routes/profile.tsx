@@ -102,13 +102,12 @@ function ProfilePage() {
     "settings" | "notifications" | "history"
   >("settings");
   const [alarmTested, setAlarmTested] = useState(false);
-  const [notifPermission, setNotifPermission] = useState<string>(() => {
-    return typeof window !== "undefined" && "Notification" in window
-      ? Notification.permission
-      : "unsupported";
-  });
+  const [notifPermission, setNotifPermission] = useState<string>("default");
 
   useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setNotifPermission(Notification.permission);
+    }
     setSavedRoutes(getSavedRoutesDetailed());
     setFavouriteStops(getFavouriteStops());
     setRecentTrips(getRecentJourneys());
