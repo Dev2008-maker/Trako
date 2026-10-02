@@ -9,7 +9,8 @@ export interface HomeMapProps extends MapViewProps {
  * Fixed full-screen map layer occupying the viewport below the AppShell header.
  */
 export function HomeMap({ headerHeight = "60px", ...mapProps }: HomeMapProps) {
-  const topStyle = typeof headerHeight === "number" ? `${headerHeight}px` : headerHeight;
+  const topStyle =
+    typeof headerHeight === "number" ? `${headerHeight}px` : headerHeight;
 
   return (
     <div

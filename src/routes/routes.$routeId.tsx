@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
+  ArrowUpDown,
+  AlertTriangle,
   Bell,
   BellRing,
   Bookmark,
@@ -36,9 +38,13 @@ import {
   getSavedRoutes,
   playAlarmChime,
   saveActiveJourney,
+  saveAlarmPreferences,
   saveRecentJourney,
+  startRepeatingAlarm,
+  stopRepeatingAlarm,
   toggleSavedRoute,
   triggerVibration,
+  unlockAudioContext,
   type JourneyState,
 } from "@/lib/journey";
 import {
@@ -58,28 +64,40 @@ import { useCurrentLocation } from "@/hooks/useCurrentLocation";
 import { useLiveVehicle } from "@/hooks/useLiveVehicle";
 
 type RouteSearch = {
-  tracking?: boolean;
-  boarding?: string;
-  destination?: string;
-  tripId?: string;
+  tracking?: boolean | undefined;
+  boarding?: string | undefined;
+  destination?: string | undefined;
+  tripId?: string | undefined;
 };
 
 export const Route = createFileRoute("/routes/$routeId")({
   validateSearch: (search: Record<string, unknown>): RouteSearch => ({
-    tracking: search.tracking === true || search.tracking === "true" ? true : undefined,
-    boarding: typeof search.boarding === "string" ? search.boarding : undefined,
-    destination: typeof search.destination === "string" ? search.destination : undefined,
-    tripId: typeof search.tripId === "string" ? search.tripId : undefined,
+    tracking:
+      search["tracking"] === true || search["tracking"] === "true"
+        ? true
+        : undefined,
+    boarding:
+      typeof search["boarding"] === "string"
+        ? (search["boarding"] as string)
+        : undefined,
+    destination:
+      typeof search["destination"] === "string"
+        ? (search["destination"] as string)
+        : undefined,
+    tripId:
+      typeof search["tripId"] === "string"
+        ? (search["tripId"] as string)
+        : undefined,
   }),
   head: () => ({
     meta: [
-      { title: "Route details & Live Journey — Trako" },
+      { title: "Route details & Live Journey — TRAKO" },
       {
         name: "description",
         content:
           "PMPML bus route details, stop timeline, timetable schedule, and live transit tracking.",
       },
-      { property: "og:title", content: "Route details & Live Journey — Trako" },
+      { property: "og:title", content: "Route details & Live Journey — TRAKO" },
       {
         property: "og:description",
         content:
@@ -96,17 +114,40 @@ function RouteDetailsPage() {
   const { routeId } = Route.useParams();
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const { location: userLoc } = useCurrentLocation();
+  const { coords: userLoc } = useCurrentLocation();
 
   // Load real GTFS route details
-  const { data: routeData, isLoading, isError } = useQuery(routeDetailQuery(routeId));
+  const {
+    data: routeData,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery(routeDetailQuery(routeId));
+
+  // Loading timeout state (6s)
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadTimedOut(false);
+      return;
+    }
+    const t = setTimeout(() => {
+      setLoadTimedOut(true);
+    }, 6000);
+    return () => clearTimeout(t);
+  }, [isLoading]);
 
   // Boarding and destination stops state
-  const [boardingStopId, setBoardingStopId] = useState<string | null>(search.boarding ?? null);
+  const [boardingStopId, setBoardingStopId] = useState<string | null>(
+    search.boarding ?? null,
+  );
   const [destinationStopId, setDestinationStopId] = useState<string | null>(
     search.destination ?? null,
   );
-  const [selectedTimelineStopId, setSelectedTimelineStopId] = useState<string | null>(null);
+  const [selectedTimelineStopId, setSelectedTimelineStopId] = useState<
+    string | null
+  >(null);
 
   // Saved route bookmark state
   const [isSaved, setIsSaved] = useState(() => {
@@ -115,13 +156,20 @@ function RouteDetailsPage() {
 
   // Timetable bottom sheet modal state
   const [showTimetable, setShowTimetable] = useState(false);
-  const [timetableTab, setTimetableTab] = useState<"weekday" | "saturday" | "sunday">("weekday");
+  const [timetableTab, setTimetableTab] = useState<
+    "weekday" | "saturday" | "sunday"
+  >("weekday");
 
   // Active journey state
-  const [journey, setJourney] = useState<JourneyState | null>(() => getActiveJourney());
+  const [journey, setJourney] = useState<JourneyState | null>(() =>
+    getActiveJourney(),
+  );
   const [isTracking, setIsTracking] = useState<boolean>(() => {
     const existing = getActiveJourney();
-    if (existing && (existing.route_id === routeId || existing.route_no === routeId)) {
+    if (
+      existing &&
+      (existing.route_id === routeId || existing.route_no === routeId)
+    ) {
       return existing.journey_status === "active";
     }
     return Boolean(search.tracking);
@@ -135,13 +183,30 @@ function RouteDetailsPage() {
 
   const [speedMultiplier, setSpeedMultiplier] = useState<number>(1);
 
-  // Alarm Trigger Mode: 2 stops before, 1 stop before, 500m radius, 250m radius
-  const [alarmTriggerMode, setAlarmTriggerMode] = useState<"2_stops" | "1_stop" | "500m" | "250m">(
-    "2_stops",
-  );
+  // Alarm Trigger Mode: reads default from passenger preferences (2_stops or 1_stop)
+  const [alarmTriggerMode, setAlarmTriggerMode] = useState<
+    "2_stops" | "1_stop" | "500m" | "250m"
+  >(() => {
+    const p = getAlarmPreferences();
+    return p.triggerMode || (p.stopsAhead === 1 ? "1_stop" : "2_stops");
+  });
+
+  // Smart Stop Alarm Lifecycle State: armed -> triggered (ringing) -> dismissed
+  const [alarmState, setAlarmState] = useState<
+    "armed" | "triggered" | "dismissed"
+  >("armed");
+
+  // Silence alarm on component unmount
+  useEffect(() => {
+    return () => {
+      stopRepeatingAlarm();
+    };
+  }, []);
 
   const [showExitConfirm, setShowExitConfirm] = useState(false);
-  const [completedSummary, setCompletedSummary] = useState<JourneyState | null>(null);
+  const [completedSummary, setCompletedSummary] = useState<JourneyState | null>(
+    null,
+  );
 
   // Ref for auto-scrolling to boarding stop
   const boardingCardRef = useRef<HTMLDivElement | null>(null);
@@ -149,7 +214,10 @@ function RouteDetailsPage() {
   // Real-time animation elapsed seconds (accumulates GTFS seconds)
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(() => {
     const active = getActiveJourney();
-    if (active && (active.route_id === routeId || active.route_no === routeId)) {
+    if (
+      active &&
+      (active.route_id === routeId || active.route_no === routeId)
+    ) {
       return active.elapsed_seconds || 0;
     }
     return 0;
@@ -166,7 +234,10 @@ function RouteDetailsPage() {
         let nearest = stops[0]!.stop;
         let minD = Infinity;
         for (const item of stops) {
-          const d = distanceMeters(userLoc, { lat: item.stop.lat, lon: item.stop.lon });
+          const d = distanceMeters(userLoc, {
+            lat: item.stop.lat,
+            lon: item.stop.lon,
+          });
           if (d < minD) {
             minD = d;
             nearest = item.stop;
@@ -187,19 +258,22 @@ function RouteDetailsPage() {
 
   // Auto-scroll to boarding stop in the timeline
   useEffect(() => {
-    if (boardingCardRef.current && !isTracking) {
-      const timer = setTimeout(() => {
-        boardingCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 400);
-      return () => clearTimeout(timer);
-    }
+    if (!boardingCardRef.current || isTracking) return;
+    const timer = setTimeout(() => {
+      boardingCardRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 400);
+    return () => clearTimeout(timer);
   }, [boardingStopId, isTracking]);
 
   // Sync saved route status
   useEffect(() => {
     if (routeData?.route) {
       setIsSaved(
-        getSavedRoutes().includes(routeData.route.id) || getSavedRoutes().includes(routeId),
+        getSavedRoutes().includes(routeData.route.id) ||
+          getSavedRoutes().includes(routeId),
       );
     }
   }, [routeData, routeId]);
@@ -210,7 +284,9 @@ function RouteDetailsPage() {
     const nowSaved = toggleSavedRoute(idToSave);
     setIsSaved(nowSaved);
     if (nowSaved) {
-      toast.success(`Route ${routeData?.route?.route_no ?? routeId} saved to your Profile`);
+      toast.success(
+        `Route ${routeData?.route?.route_no ?? routeId} saved to your Profile`,
+      );
     } else {
       toast.info(`Route removed from saved bookmarks`);
     }
@@ -241,7 +317,10 @@ function RouteDetailsPage() {
     let totalDurationMins = endArrMin - startDepMin;
     if (totalDurationMins <= 0) totalDurationMins += 24 * 60;
     // Guarantee at least 2.5 minutes per stop segment in timetable
-    totalDurationMins = Math.max(totalDurationMins, (subStops.length - 1) * 2.5);
+    totalDurationMins = Math.max(
+      totalDurationMins,
+      (subStops.length - 1) * 2.5,
+    );
 
     const totalRealSeconds = Math.round(totalDurationMins * 60);
 
@@ -269,8 +348,10 @@ function RouteDetailsPage() {
 
     // Ensure last stop matches totalRealSeconds
     if (relativeStopSeconds.length > 1) {
-      relativeStopSeconds[relativeStopSeconds.length - 1]!.arrSec = totalRealSeconds;
-      relativeStopSeconds[relativeStopSeconds.length - 1]!.depSec = totalRealSeconds;
+      relativeStopSeconds[relativeStopSeconds.length - 1]!.arrSec =
+        totalRealSeconds;
+      relativeStopSeconds[relativeStopSeconds.length - 1]!.depSec =
+        totalRealSeconds;
     }
 
     // Map each stop to its closest coordinate on route line
@@ -300,7 +381,12 @@ function RouteDetailsPage() {
   // REAL-TIME ANIMATION & TIMETABLE PROGRESS LOOP
   // =========================================================================
   useEffect(() => {
-    if (!isTracking || !journey || journey.journey_status !== "active" || !timingProfile) {
+    if (
+      !isTracking ||
+      !journey ||
+      journey.journey_status !== "active" ||
+      !timingProfile
+    ) {
       return;
     }
 
@@ -338,10 +424,15 @@ function RouteDetailsPage() {
           setCompletedSummary(finished);
 
           // Trigger destination arrival fanfare
+          stopRepeatingAlarm();
+          setAlarmState("dismissed");
           const prefs = getAlarmPreferences();
           if (prefs.soundEnabled) playAlarmChime("arrival");
-          if (prefs.vibrationEnabled) triggerVibration([400, 200, 400, 200, 600]);
-          toast.success(`You have arrived at ${journey.destination_stop.name}! Deboard now.`);
+          if (prefs.vibrationEnabled)
+            triggerVibration([400, 200, 400, 200, 600]);
+          toast.success(
+            `You have arrived at ${journey.destination_stop.name}! Deboard now.`,
+          );
           setJourney(null);
           return totalSec;
         }
@@ -393,13 +484,34 @@ function RouteDetailsPage() {
     const progressPercent = Math.min(100, (tSim / totalRealSeconds) * 100);
 
     const startCoordIdx = stopCoordIndices[0] ?? 0;
-    const endCoordIdx = stopCoordIndices[stopCoordIndices.length - 1] ?? coords.length - 1;
+    const endCoordIdx =
+      stopCoordIndices[stopCoordIndices.length - 1] ?? coords.length - 1;
 
-    // Find current active leg
+    // Find current active leg (simulation or real GPS)
     let activeSubIdx = 0;
     for (let i = 0; i < relativeStopSeconds.length - 1; i++) {
       if (tSim >= relativeStopSeconds[i]!.arrSec) {
         activeSubIdx = i;
+      }
+    }
+
+    // If real browser GPS is available, check proximity to downstream stops
+    if (userLoc && isTracking) {
+      let closestSubIdx = -1;
+      let minStopDist = Infinity;
+      subStops.forEach((item, sIdx) => {
+        const d = distanceMeters(userLoc, {
+          lat: item.stop.lat,
+          lon: item.stop.lon,
+        });
+        if (d < minStopDist) {
+          minStopDist = d;
+          closestSubIdx = sIdx;
+        }
+      });
+      // If user is within 350m of a downstream stop on this journey
+      if (minStopDist <= 350 && closestSubIdx > activeSubIdx) {
+        activeSubIdx = closestSubIdx;
       }
     }
 
@@ -420,7 +532,9 @@ function RouteDetailsPage() {
     const curP = stopCoordIndices[activeSubIdx] ?? 0;
     const nextP = stopCoordIndices[activeSubIdx + 1] ?? curP;
 
-    const nextStopRemainingSec = nextStopTimes ? Math.max(0, nextStopTimes.arrSec - tSim) : 0;
+    const nextStopRemainingSec = nextStopTimes
+      ? Math.max(0, nextStopTimes.arrSec - tSim)
+      : 0;
 
     if (!nextStopTimes || tSim <= curStopTimes.depSec) {
       // Bus is dwelling at stop
@@ -438,8 +552,14 @@ function RouteDetailsPage() {
       }
     } else {
       // Bus is travelling along polyline between curP and nextP
-      const legDuration = Math.max(1, nextStopTimes.arrSec - curStopTimes.depSec);
-      const legFraction = Math.max(0, Math.min(1, (tSim - curStopTimes.depSec) / legDuration));
+      const legDuration = Math.max(
+        1,
+        nextStopTimes.arrSec - curStopTimes.depSec,
+      );
+      const legFraction = Math.max(
+        0,
+        Math.min(1, (tSim - curStopTimes.depSec) / legDuration),
+      );
 
       const legPoly = coords.slice(curP, nextP + 1);
       const interp = interpolatePolyline(legPoly, legFraction);
@@ -455,7 +575,10 @@ function RouteDetailsPage() {
     for (let i = 0; i < remainingCoords.length - 1; i++) {
       const a = remainingCoords[i]!;
       const b = remainingCoords[i + 1]!;
-      remainingMeters += distanceMeters({ lat: a[1], lon: a[0] }, { lat: b[1], lon: b[0] });
+      remainingMeters += distanceMeters(
+        { lat: a[1], lon: a[0] },
+        { lat: b[1], lon: b[0] },
+      );
     }
 
     return {
@@ -471,7 +594,7 @@ function RouteDetailsPage() {
       remainingMeters,
       progressPercent,
     };
-  }, [routeData?.line, timingProfile, elapsedSeconds]);
+  }, [routeData?.line, timingProfile, elapsedSeconds, isTracking, userLoc]);
 
   // Real-time GTFS Realtime Vehicle Position with 8-second polling & Demo Mode fallback
   const liveVehicle = useLiveVehicle({
@@ -493,7 +616,9 @@ function RouteDetailsPage() {
   // =========================================================================
   const [trafficData, setTrafficData] = useState<TrafficETAResult | null>(null);
   const [isTrafficLoading, setIsTrafficLoading] = useState(false);
-  const [trafficLastChecked, setTrafficLastChecked] = useState<number | null>(null);
+  const [trafficLastChecked, setTrafficLastChecked] = useState<number | null>(
+    null,
+  );
 
   const fetchTraffic = useCallback(async () => {
     if (!timingProfile) return;
@@ -502,18 +627,20 @@ function RouteDetailsPage() {
     const dest =
       (destinationStopId && routeData?.stops
         ? routeData.stops.find((s) => s.stop.id === destinationStopId)?.stop
-        : null) ?? timingProfile.subStops[timingProfile.subStops.length - 1]?.stop;
+        : null) ??
+      timingProfile.subStops[timingProfile.subStops.length - 1]?.stop;
     if (!dest) return;
 
     const curBusGps =
-      activeBusLocation ??
       liveVehicle.currentPosition ??
       liveState.currentPoint ??
       timingProfile.subStops[0]?.stop;
     if (!curBusGps) return;
 
-    const scheduledMins = liveState.etaMinutes || timingProfile.totalDurationMins;
-    const fallbackDist = liveState.remainingMeters || routeData?.totalDistanceMeters || 0;
+    const scheduledMins =
+      liveState.etaMinutes || timingProfile.totalDurationMins;
+    const fallbackDist =
+      liveState.remainingMeters || routeData?.totalDistanceMeters || 0;
 
     setIsTrafficLoading(true);
     try {
@@ -535,7 +662,6 @@ function RouteDetailsPage() {
     destinationStopId,
     routeData?.stops,
     routeData?.totalDistanceMeters,
-    activeBusLocation,
     liveVehicle.currentPosition,
     liveState.currentPoint,
     liveState.etaMinutes,
@@ -555,7 +681,7 @@ function RouteDetailsPage() {
 
   // Smart Stop Alarm Trigger logic
   useEffect(() => {
-    if (!isTracking || !journey) return;
+    if (!isTracking || !journey || alarmState !== "armed") return;
     const stopsLeft = liveState.stopsRemaining;
     const distLeftM = liveState.remainingMeters;
 
@@ -563,19 +689,32 @@ function RouteDetailsPage() {
     let alarmMsg = "";
     let triggerKey = "";
 
-    if (alarmTriggerMode === "2_stops" && stopsLeft <= 2) {
+    // Guard: stopsRemaining > 0 to prevent premature/spurious triggers
+    if (alarmTriggerMode === "2_stops" && stopsLeft > 0 && stopsLeft <= 2) {
       shouldTrigger = true;
       triggerKey = "2_stops";
       alarmMsg = `Get ready! 2 stops before ${journey.destination_stop.name}.`;
-    } else if (alarmTriggerMode === "1_stop" && stopsLeft <= 1) {
+    } else if (
+      alarmTriggerMode === "1_stop" &&
+      stopsLeft > 0 &&
+      stopsLeft <= 1
+    ) {
       shouldTrigger = true;
       triggerKey = "1_stop";
       alarmMsg = `Next stop is your destination (${journey.destination_stop.name})! Prepare to deboard.`;
-    } else if (alarmTriggerMode === "500m" && distLeftM > 0 && distLeftM <= 500) {
+    } else if (
+      alarmTriggerMode === "500m" &&
+      distLeftM > 0 &&
+      distLeftM <= 500
+    ) {
       shouldTrigger = true;
       triggerKey = "500m";
       alarmMsg = `Within 500 meters of ${journey.destination_stop.name}! Deboard soon.`;
-    } else if (alarmTriggerMode === "250m" && distLeftM > 0 && distLeftM <= 250) {
+    } else if (
+      alarmTriggerMode === "250m" &&
+      distLeftM > 0 &&
+      distLeftM <= 250
+    ) {
       shouldTrigger = true;
       triggerKey = "250m";
       alarmMsg = `Arriving at ${journey.destination_stop.name} within 250 meters!`;
@@ -583,9 +722,18 @@ function RouteDetailsPage() {
 
     if (shouldTrigger && lastAlarmFiredRef.current !== triggerKey) {
       lastAlarmFiredRef.current = triggerKey;
+      setAlarmState("triggered");
+
       const prefs = getAlarmPreferences();
-      if (prefs.soundEnabled) playAlarmChime("alarm");
-      if (prefs.vibrationEnabled) triggerVibration([300, 150, 300, 150, 450]);
+      startRepeatingAlarm({
+        soundEnabled: prefs.soundEnabled,
+        vibrationEnabled: prefs.vibrationEnabled,
+        autoSilenceMs: 45000,
+        onAutoSilence: () => {
+          setAlarmState("dismissed");
+        },
+      });
+
       addNotification({
         type: "alarm_triggered",
         title: `Approaching ${journey.destination_stop.name}`,
@@ -593,19 +741,52 @@ function RouteDetailsPage() {
         route_no: journey.route_no,
         stop_name: journey.destination_stop.name,
       });
-      toast.warning(alarmMsg, { duration: 6000 });
+      toast.warning(alarmMsg, { duration: 8000 });
+      if (
+        typeof window !== "undefined" &&
+        "Notification" in window &&
+        Notification.permission === "granted"
+      ) {
+        try {
+          new Notification(`TRAKO Stop Alert: Bus ${journey.route_no}`, {
+            body: alarmMsg,
+            icon: "/favicon.svg",
+          });
+        } catch {
+          // ignore notification errors
+        }
+      }
     }
-  }, [isTracking, journey, liveState.stopsRemaining, liveState.remainingMeters, alarmTriggerMode]);
+  }, [
+    isTracking,
+    journey,
+    alarmState,
+    liveState.stopsRemaining,
+    liveState.remainingMeters,
+    alarmTriggerMode,
+  ]);
+
+  // Dismiss ringing alarm
+  function handleDismissAlarm() {
+    stopRepeatingAlarm();
+    setAlarmState("dismissed");
+    toast.info("Stop alarm dismissed.");
+  }
 
   // Start Journey Handler (Realtime GTFS standard)
   function handleStartJourney() {
     if (!routeData?.route || !routeData.stops.length || !timingProfile) return;
 
+    // Unlock WebAudio context during user gesture
+    unlockAudioContext().catch(() => {});
+
     const bId = boardingStopId ?? routeData.stops[0]!.stop.id;
-    const dId = destinationStopId ?? routeData.stops[routeData.stops.length - 1]!.stop.id;
+    const dId =
+      destinationStopId ?? routeData.stops[routeData.stops.length - 1]!.stop.id;
 
     const boardingObj =
-      routeData.stops.find((s) => s.stop.id === bId)?.stop ?? routeData.stops[0]!.stop;
+      routeData.stops.find((s) => s.stop.id === bId)?.stop ??
+      routeData.stops[0]!.stop;
     const destObj =
       routeData.stops.find((s) => s.stop.id === dId)?.stop ??
       routeData.stops[routeData.stops.length - 1]!.stop;
@@ -640,6 +821,7 @@ function RouteDetailsPage() {
     setJourney(newJourney);
     setElapsedSeconds(0);
     lastAlarmFiredRef.current = "";
+    setAlarmState("armed");
     setIsTracking(true);
     setFollowBus(true);
     setJourneyFitKey((k) => k + 1);
@@ -662,7 +844,8 @@ function RouteDetailsPage() {
 
   function handlePauseTracking() {
     if (!journey) return;
-    const nextStatus = journey.journey_status === "active" ? "paused" : "active";
+    const nextStatus =
+      journey.journey_status === "active" ? "paused" : "active";
     const updated: JourneyState = {
       ...journey,
       journey_status: nextStatus,
@@ -680,6 +863,8 @@ function RouteDetailsPage() {
   }
 
   function handleExitJourney() {
+    stopRepeatingAlarm();
+    setAlarmState("armed");
     if (journey) {
       saveActiveJourney(null);
       saveRecentJourney({ ...journey, journey_status: "completed" });
@@ -691,12 +876,92 @@ function RouteDetailsPage() {
     toast.info("Journey ended.");
   }
 
+  function handleReverseJourney() {
+    const prevB = boardingStopId;
+    const prevD = destinationStopId;
+    if (!prevB || !prevD) return;
+
+    setBoardingStopId(prevD);
+    setDestinationStopId(prevB);
+    setElapsedSeconds(0);
+    lastAlarmFiredRef.current = "";
+    setAlarmState("armed");
+
+    if (isTracking && routeData?.route && timingProfile) {
+      const bObj =
+        routeData.stops.find((s) => s.stop.id === prevD)?.stop ??
+        routeData.stops[0]!.stop;
+      const dObj =
+        routeData.stops.find((s) => s.stop.id === prevB)?.stop ??
+        routeData.stops[routeData.stops.length - 1]!.stop;
+
+      const revJourney: JourneyState = {
+        id: `journey-${Date.now()}`,
+        route_id: routeData.route.id,
+        route_no: routeData.route.route_no,
+        route_name: routeData.route.name,
+        trip_id: routeData.tripId,
+        boarding_stop: bObj,
+        destination_stop: dObj,
+        boarding_index: 0,
+        destination_index: Math.max(1, routeData.stops.length - 1),
+        current_stop_index: 0,
+        alarm_stop_index: Math.max(0, routeData.stops.length - 3),
+        journey_status: "active",
+        vehicle_tracking_mode: liveVehicle.isLive ? "realtime" : "scheduled",
+        gps_status: userLoc ? "active" : "unavailable",
+        transit_mode: "bus",
+        started_at: new Date().toISOString(),
+        delay_minutes: 0,
+        all_stops: routeData.stopTimes,
+        shape_coordinates: routeData.line,
+        current_bus_location: { lat: bObj.lat, lon: bObj.lon },
+        mode: "live",
+        duration_seconds: timingProfile.totalRealSeconds,
+        elapsed_seconds: 0,
+        progress_percent: 0,
+      };
+
+      saveActiveJourney(revJourney);
+      setJourney(revJourney);
+      setIsTracking(true);
+      setFollowBus(true);
+      setJourneyFitKey((k) => k + 1);
+    }
+
+    toast.success("Reversed journey direction!");
+  }
+
   if (isLoading) {
     return (
       <AppShell title="Loading Route…">
-        <div className="flex h-64 flex-col items-center justify-center gap-3">
+        <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 px-4 text-center">
           <div className="size-8 animate-spin rounded-full border-3 border-primary border-t-transparent" />
-          <p className="text-sm font-medium text-muted-foreground">Loading real GTFS route…</p>
+          <p className="text-sm font-medium text-muted-foreground">
+            Loading real GTFS route…
+          </p>
+          {loadTimedOut && (
+            <div className="mt-3 flex flex-col items-center gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3.5 max-w-sm">
+              <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                Loading is taking longer than expected.
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => refetch()}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:opacity-90"
+                >
+                  <RefreshCw className="size-3.5" /> Retry
+                </button>
+                <Link
+                  to="/routes"
+                  className="inline-flex items-center gap-1 rounded-xl bg-muted px-3.5 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted/80"
+                >
+                  <ArrowLeft className="size-3.5" /> Browse routes
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </AppShell>
     );
@@ -707,36 +972,58 @@ function RouteDetailsPage() {
       <AppShell title="Error Loading Route">
         <div className="trako-card p-6 text-center">
           <Bus className="mx-auto size-10 text-destructive" />
-          <h2 className="mt-3 text-base font-bold text-destructive">Error loading route</h2>
+          <h2 className="mt-3 text-base font-bold text-destructive">
+            Error loading route
+          </h2>
           <p className="mt-1 text-xs font-mono text-destructive break-all">
             {(error as Error)?.message || String(error)}
           </p>
-          <Link
-            to="/routes"
-            className="mt-4 inline-flex items-center gap-1 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm"
-          >
-            <ArrowLeft className="size-4" /> Browse all routes
-          </Link>
+          <div className="mt-4 flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm hover:opacity-90"
+            >
+              <RefreshCw className="size-3.5" /> Retry
+            </button>
+            <Link
+              to="/routes"
+              className="inline-flex items-center gap-1 rounded-xl bg-muted px-4 py-2 text-xs font-semibold text-foreground shadow-sm hover:bg-muted/80"
+            >
+              <ArrowLeft className="size-4" /> Browse all routes
+            </Link>
+          </div>
         </div>
       </AppShell>
     );
   }
 
-  if (!routeData?.route) {
+  if (!routeData?.route || routeData.stops.length === 0) {
     return (
-      <AppShell title="Route Not Found">
+      <AppShell title="Route Data Unavailable">
         <div className="trako-card p-6 text-center">
           <Bus className="mx-auto size-10 text-muted-foreground" />
-          <h2 className="mt-3 text-base font-bold">Route not found</h2>
+          <h2 className="mt-3 text-base font-bold">Route data unavailable</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Could not find details for route &ldquo;{routeId}&rdquo;.
+            {routeData?.route
+              ? `No active stop schedule found for route "${routeData.route.route_no}".`
+              : `Could not find details for route "${routeId}".`}
           </p>
-          <Link
-            to="/routes"
-            className="mt-4 inline-flex items-center gap-1 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm"
-          >
-            <ArrowLeft className="size-4" /> Browse all routes
-          </Link>
+          <div className="mt-4 flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm hover:opacity-90"
+            >
+              <RefreshCw className="size-3.5" /> Retry
+            </button>
+            <Link
+              to="/routes"
+              className="inline-flex items-center gap-1 rounded-xl bg-muted px-4 py-2 text-xs font-semibold text-foreground shadow-sm hover:bg-muted/80"
+            >
+              <ArrowLeft className="size-4" /> Browse all routes
+            </Link>
+          </div>
         </div>
       </AppShell>
     );
@@ -757,20 +1044,26 @@ function RouteDetailsPage() {
     stopTimes,
   } = routeData;
 
-  const boardingStop = stops.find((s) => s.stop.id === boardingStopId)?.stop ?? stops[0]!.stop;
+  const boardingStop =
+    stops.find((s) => s.stop.id === boardingStopId)?.stop ?? stops[0]!.stop;
   const destStop =
-    stops.find((s) => s.stop.id === destinationStopId)?.stop ?? stops[stops.length - 1]!.stop;
+    stops.find((s) => s.stop.id === destinationStopId)?.stop ??
+    stops[stops.length - 1]!.stop;
 
   // Active stop in journey
   const currentLiveStop =
-    stopTimes[liveState.activeStopIndex]?.stop ?? journey?.boarding_stop ?? boardingStop;
+    stopTimes[liveState.activeStopIndex]?.stop ??
+    journey?.boarding_stop ??
+    boardingStop;
   const nextLiveStop = stopTimes[liveState.activeStopIndex + 1]?.stop ?? null;
 
   // Current tracked bus position and bearing (smoothly interpolated)
   const activeBusLocation = isTracking
     ? (liveVehicle.currentPosition ?? liveState.currentPoint)
     : null;
-  const activeBusBearing = liveVehicle.isLive ? liveVehicle.bearing : liveState.bearing;
+  const activeBusBearing = liveVehicle.isLive
+    ? liveVehicle.bearing
+    : liveState.bearing;
 
   // Animated live bus marker with heading rotation (PMPML GTFS-RT / Demo)
   const liveBuses = activeBusLocation
@@ -782,7 +1075,8 @@ function RouteDetailsPage() {
           lat: activeBusLocation.lat,
           lon: activeBusLocation.lon,
           label: route.route_no,
-          status: (liveVehicle.isLive ? "live" : "last_seen") as "live" | "last_seen",
+          status: (liveVehicle.isLive ? "live" : "last_seen") as
+            "live" | "last_seen",
           isDemo: liveVehicle.isDemo,
           bearing: activeBusBearing,
         },
@@ -801,10 +1095,41 @@ function RouteDetailsPage() {
     ? distanceMeters(userLoc, { lat: destStop.lat, lon: destStop.lon })
     : null;
 
+  // Check if destination stop was passed (FEATURE 8 — Missed Stop Recovery)
+  const isDestinationPassed = (() => {
+    if (!isTracking || !timingProfile || !journey) return false;
+    // Condition 1: Route simulation / timetable progress strictly past destination index
+    if (liveState.activeStopIndex > timingProfile.dIdx) return true;
+    // Condition 2: Passenger GPS is > 450m past destination stop
+    if (userLoc) {
+      const d = distanceMeters(userLoc, {
+        lat: destStop.lat,
+        lon: destStop.lon,
+      });
+      if (liveState.activeStopIndex >= timingProfile.dIdx && d > 450) {
+        return true;
+      }
+    }
+    return false;
+  })();
+
+  // Overall Journey Status (FEATURE 10)
+  const journeyStatus = (() => {
+    if (!isTracking || !journey) return "not_started";
+    if (isDestinationPassed) return "interrupted";
+    if (journey.journey_status === "paused") return "paused";
+    if (!userLoc) return "gps_unavailable";
+    return "active";
+  })();
+
   return (
     <AppShell
       title={`Route ${route.route_no}`}
-      subtitle={isTracking ? "Live Journey Tracking" : `${route.origin} ➔ ${route.destination}`}
+      subtitle={
+        isTracking
+          ? "Live Journey Tracking"
+          : `${route.origin} ➔ ${route.destination}`
+      }
     >
       <div className="space-y-3 pb-8">
         {/* ========================================================================= */}
@@ -823,26 +1148,48 @@ function RouteDetailsPage() {
                   {route.name}
                 </h1>
                 <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground">{route.origin}</span>
+                  <span className="font-semibold text-foreground">
+                    {route.origin}
+                  </span>
                   <span>➔</span>
-                  <span className="font-semibold text-foreground">{route.destination}</span>
+                  <span className="font-semibold text-foreground">
+                    {route.destination}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Bookmark / Save Route Button */}
-            <button
-              type="button"
-              onClick={handleToggleSave}
-              aria-label={isSaved ? "Remove from saved routes" : "Save this route"}
-              className={`grid size-9 place-items-center rounded-xl transition ${
-                isSaved
-                  ? "bg-primary text-white shadow-xs"
-                  : "bg-tint text-muted-foreground hover:text-primary"
-              }`}
-            >
-              {isSaved ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* Reverse Journey Button */}
+              <button
+                type="button"
+                onClick={handleReverseJourney}
+                title="Reverse journey direction (swap origin & destination)"
+                className="grid size-9 place-items-center rounded-xl bg-tint text-muted-foreground hover:text-primary transition active:scale-95"
+              >
+                <ArrowUpDown className="size-4" />
+              </button>
+
+              {/* Bookmark / Save Route Button */}
+              <button
+                type="button"
+                onClick={handleToggleSave}
+                aria-label={
+                  isSaved ? "Remove from saved routes" : "Save this route"
+                }
+                className={`grid size-9 place-items-center rounded-xl transition ${
+                  isSaved
+                    ? "bg-primary text-white shadow-xs"
+                    : "bg-tint text-muted-foreground hover:text-primary"
+                }`}
+              >
+                {isSaved ? (
+                  <BookmarkCheck className="size-4" />
+                ) : (
+                  <Bookmark className="size-4" />
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Service badges and timetable button */}
@@ -876,7 +1223,9 @@ function RouteDetailsPage() {
           {/* Quick Schedule & Live ETA Row */}
           <div className="grid grid-cols-4 gap-1.5 rounded-xl bg-tint p-2 text-center text-xs">
             <div>
-              <p className="text-[10px] font-bold uppercase text-muted-foreground">Live ETA</p>
+              <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                Live ETA
+              </p>
               <p className="font-extrabold text-primary">
                 {trafficData?.liveETAMinutes
                   ? `${trafficData.liveETAMinutes}m`
@@ -884,15 +1233,21 @@ function RouteDetailsPage() {
               </p>
             </div>
             <div className="border-l border-border">
-              <p className="text-[10px] font-bold uppercase text-muted-foreground">First Bus</p>
+              <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                First Bus
+              </p>
               <p className="font-extrabold text-foreground">{firstBus}</p>
             </div>
             <div className="border-l border-border">
-              <p className="text-[10px] font-bold uppercase text-muted-foreground">Last Bus</p>
+              <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                Last Bus
+              </p>
               <p className="font-extrabold text-foreground">{lastBus}</p>
             </div>
             <div className="border-l border-border">
-              <p className="text-[10px] font-bold uppercase text-muted-foreground">Fare</p>
+              <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                Fare
+              </p>
               <p className="font-extrabold text-primary">{fare}</p>
             </div>
           </div>
@@ -904,16 +1259,27 @@ function RouteDetailsPage() {
         <div className="overflow-hidden rounded-2xl border border-border shadow-xs">
           <div
             className={
-              isTracking ? "h-[290px] sm:h-[350px] w-full relative" : "h-[210px] w-full relative"
+              isTracking
+                ? "h-[290px] sm:h-[350px] w-full relative"
+                : "h-[210px] w-full relative"
             }
           >
             <MapView
               className="size-full"
               center={
-                followBus && activeBusLocation
-                  ? activeBusLocation
-                  : (activeBusLocation ??
-                    (boardingStop ? { lat: boardingStop.lat, lon: boardingStop.lon } : PUNE_CENTER))
+                selectedTimelineStopId &&
+                stops.find((s) => s.stop.id === selectedTimelineStopId)
+                  ? {
+                      lat: stops.find(
+                        (s) => s.stop.id === selectedTimelineStopId,
+                      )!.stop.lat,
+                      lon: stops.find(
+                        (s) => s.stop.id === selectedTimelineStopId,
+                      )!.stop.lon,
+                    }
+                  : boardingStop
+                    ? { lat: boardingStop.lat, lon: boardingStop.lon }
+                    : PUNE_CENTER
               }
               stops={stops.map((s) => s.stop)}
               selectedStopId={selectedTimelineStopId}
@@ -921,7 +1287,9 @@ function RouteDetailsPage() {
               destinationStopId={destinationStopId}
               showIntermediateStops={false}
               line={
-                liveState.remainingCoords.length > 0 ? liveState.remainingCoords : routeData.line
+                liveState.remainingCoords.length > 0
+                  ? liveState.remainingCoords
+                  : routeData.line
               }
               completedLine={liveState.completedCoords}
               lineColor="#800080"
@@ -945,15 +1313,20 @@ function RouteDetailsPage() {
         {/* Traffic Status / Google Routes Live Indicator */}
         <div className="flex items-center justify-between rounded-xl bg-tint/60 px-3 py-1.5 text-[11px] border border-border/40">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-muted-foreground">Live Route:</span>
+            <span className="font-semibold text-muted-foreground">
+              Live Route:
+            </span>
             <span className="font-extrabold text-primary">
               {trafficData?.liveETAMinutes ?? liveState.etaMinutes} min ETA
             </span>
             <span>•</span>
-            <span className="font-bold text-foreground">Arr {trafficData?.arrivalTime ?? "—"}</span>
+            <span className="font-bold text-foreground">
+              Arr {trafficData?.arrivalTime ?? "—"}
+            </span>
             <span>•</span>
             <span className="font-semibold text-muted-foreground">
-              {trafficData?.formattedDistance ?? formatDistance(liveState.remainingMeters)}
+              {trafficData?.formattedDistance ??
+                formatDistance(liveState.remainingMeters)}
             </span>
           </div>
 
@@ -982,22 +1355,98 @@ function RouteDetailsPage() {
         {/* ========================================================================= */}
         {/* 3. LIVE PASSENGER TRACKING DASHBOARD                                      */}
         {/* ========================================================================= */}
+        {/* MISSED STOP RECOVERY ALERT (FEATURE 8) */}
+        {isTracking && isDestinationPassed && (
+          <div className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 shadow-md space-y-2.5">
+            <div className="flex items-center gap-2 text-amber-900 font-extrabold text-sm">
+              <AlertTriangle className="size-5 text-amber-600 animate-bounce" />
+              <span>⚠️ YOU PASSED YOUR DESTINATION ({destStop.name})</span>
+            </div>
+            <p className="text-xs text-amber-900 leading-relaxed font-medium">
+              Your location or vehicle position is now past your selected
+              destination stop.
+              {nextLiveStop
+                ? ` Next practical stop: ${nextLiveStop.name}.`
+                : " This service terminates soon."}
+            </p>
+            <div className="flex items-center gap-2 pt-1">
+              {nextLiveStop && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDestinationStopId(nextLiveStop.id);
+                    toast.success(
+                      `Updated destination to ${nextLiveStop.name}`,
+                    );
+                  }}
+                  className="flex-1 py-2 px-3 rounded-xl bg-amber-600 text-white font-bold text-xs shadow-xs hover:bg-amber-700 active:scale-95"
+                >
+                  Guide Me to {nextLiveStop.name}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleReverseJourney}
+                className="py-2 px-3 rounded-xl border border-amber-600 text-amber-800 font-bold text-xs hover:bg-amber-100 active:scale-95 flex items-center gap-1 shrink-0"
+              >
+                <RotateCcw className="size-3.5" /> Return Back
+              </button>
+            </div>
+          </div>
+        )}
+
         {isTracking && journey ? (
           <div className="trako-card border-2 border-primary/30 p-4 bg-gradient-to-br from-white via-white to-purple-50/60 shadow-md space-y-3.5">
-            {/* Top row with Live indicator and Speed Controls */}
+            {/* Top row with Live status, GPS state, and Speed Controls */}
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-3">
-              <div className="flex items-center gap-2">
-                {liveVehicle.isLive ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Journey Status Badge (FEATURE 10) */}
+                {journeyStatus === "active" && (
                   <span className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-black text-emerald-800 border border-emerald-300 shadow-2xs">
                     <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                    LIVE
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 rounded-full bg-purple-100 px-2.5 py-1 text-xs font-black text-purple-800 border border-purple-200 shadow-2xs">
-                    DEMO
+                    JOURNEY ACTIVE
                   </span>
                 )}
-                <span className="text-xs font-extrabold text-primary">BUS {route.route_no}</span>
+                {journeyStatus === "paused" && (
+                  <span className="flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-black text-amber-800 border border-amber-300">
+                    <Pause className="size-3" />
+                    JOURNEY PAUSED
+                  </span>
+                )}
+                {journeyStatus === "gps_unavailable" && (
+                  <span className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-700 border border-slate-300">
+                    <span className="size-2 rounded-full bg-amber-500" />
+                    GPS UNAVAILABLE
+                  </span>
+                )}
+                {journeyStatus === "interrupted" && (
+                  <span className="flex items-center gap-1.5 rounded-full bg-rose-100 px-2.5 py-1 text-xs font-black text-rose-800 border border-rose-300">
+                    <AlertTriangle className="size-3 text-rose-600" />
+                    DESTINATION PASSED
+                  </span>
+                )}
+
+                {/* Truthful Vehicle Position Badge (FEATURE 1) */}
+                {liveVehicle.isLive ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                    Realtime GPS (GTFS-RT)
+                  </span>
+                ) : trafficData?.source === "google_routes" ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200">
+                    Estimated Position
+                  </span>
+                ) : (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-primary border border-purple-200"
+                    title="Interpolated along official static GTFS timetable"
+                  >
+                    Scheduled Position
+                  </span>
+                )}
+
+                <span className="text-xs font-extrabold text-primary">
+                  BUS {route.route_no}
+                </span>
                 {liveVehicle.isLive && liveVehicle.rawVehicle?.licensePlate && (
                   <span className="text-[10px] font-bold text-muted-foreground uppercase bg-slate-100 px-1.5 py-0.5 rounded-md">
                     {liveVehicle.rawVehicle.licensePlate}
@@ -1007,7 +1456,9 @@ function RouteDetailsPage() {
 
               {/* Speed Controls: 1x (Realtime), 2x, 5x, 10x, 30x */}
               <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1">
-                <span className="px-1.5 text-[10px] font-bold text-muted-foreground">Speed:</span>
+                <span className="px-1.5 text-[10px] font-bold text-muted-foreground">
+                  Speed:
+                </span>
                 {[1, 2, 5, 10, 30].map((spd) => (
                   <button
                     key={spd}
@@ -1095,7 +1546,9 @@ function RouteDetailsPage() {
               {/* Google Maps style Blue Progress Bar */}
               <div>
                 <div className="flex items-center justify-between text-[11px] mb-1">
-                  <span className="font-semibold text-muted-foreground">Route Progress</span>
+                  <span className="font-semibold text-muted-foreground">
+                    Route Progress
+                  </span>
                   <span className="font-bold text-primary">
                     {liveState.progressPercent.toFixed(1)}% complete
                   </span>
@@ -1103,7 +1556,9 @@ function RouteDetailsPage() {
                 <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
                   <div
                     className="h-full bg-primary transition-all duration-300 ease-out"
-                    style={{ width: `${Math.min(100, liveState.progressPercent)}%` }}
+                    style={{
+                      width: `${Math.min(100, liveState.progressPercent)}%`,
+                    }}
                   />
                 </div>
               </div>
@@ -1113,9 +1568,12 @@ function RouteDetailsPage() {
             <div className="rounded-xl bg-white p-3 border border-border space-y-2 shadow-2xs">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground flex items-center gap-1.5 font-semibold">
-                  <span className="size-2 rounded-full bg-primary animate-ping" /> Current Stop:
+                  <span className="size-2 rounded-full bg-primary animate-ping" />{" "}
+                  Current Stop:
                 </span>
-                <span className="font-extrabold text-foreground">{currentLiveStop.name}</span>
+                <span className="font-extrabold text-foreground">
+                  {currentLiveStop.name}
+                </span>
               </div>
 
               {nextLiveStop && (
@@ -1124,7 +1582,9 @@ function RouteDetailsPage() {
                     <Navigation className="size-3 text-primary" /> Next Stop:
                   </span>
                   <div className="text-right">
-                    <span className="font-bold text-primary">{nextLiveStop.name}</span>
+                    <span className="font-bold text-primary">
+                      {nextLiveStop.name}
+                    </span>
                     <span className="ml-2 rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-extrabold text-primary">
                       in {formatCountdown(liveState.nextStopRemainingSec)}
                     </span>
@@ -1136,19 +1596,25 @@ function RouteDetailsPage() {
             {/* Dynamic Travel Stats (ETA, Arrival Time, Delay, Remaining Distance) */}
             <div className="grid grid-cols-4 gap-1.5 rounded-xl bg-tint p-2.5 text-center text-xs border border-border/60">
               <div>
-                <p className="text-[10px] font-bold uppercase text-muted-foreground">ETA</p>
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                  ETA
+                </p>
                 <p className="font-extrabold text-primary">
                   {trafficData?.liveETAMinutes ?? liveState.etaMinutes} min
                 </p>
               </div>
               <div className="border-l border-border">
-                <p className="text-[10px] font-bold uppercase text-muted-foreground">Arrival</p>
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                  Arrival
+                </p>
                 <p className="font-extrabold text-foreground truncate">
                   {trafficData?.arrivalTime ?? "—"}
                 </p>
               </div>
               <div className="border-l border-border">
-                <p className="text-[10px] font-bold uppercase text-muted-foreground">Delay</p>
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                  Delay
+                </p>
                 <p
                   className={`font-extrabold truncate ${
                     (trafficData?.delayMinutes ?? 0) > 0
@@ -1168,28 +1634,88 @@ function RouteDetailsPage() {
                 </p>
               </div>
               <div className="border-l border-border">
-                <p className="text-[10px] font-bold uppercase text-muted-foreground">Distance</p>
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                  Distance
+                </p>
                 <p className="font-extrabold text-foreground truncate">
-                  {trafficData?.formattedDistance ?? formatDistance(liveState.remainingMeters)}
+                  {trafficData?.formattedDistance ??
+                    formatDistance(liveState.remainingMeters)}
                 </p>
               </div>
             </div>
 
             {/* Smart Stop Alarm Controls */}
-            <div className="rounded-xl bg-purple-50/70 p-3 border border-primary/20 space-y-2">
+            <div
+              className={`rounded-xl p-3 border space-y-2 transition-all ${
+                alarmState === "triggered"
+                  ? "bg-rose-50 border-rose-400 ring-2 ring-rose-400/40 animate-pulse"
+                  : alarmState === "dismissed"
+                    ? "bg-muted/40 border-border"
+                    : "bg-purple-50/70 border-primary/20"
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
-                  <BellRing className="size-4 animate-bounce text-primary" />
-                  <span>Smart Stop Alarm</span>
+                  <BellRing
+                    className={`size-4 ${
+                      alarmState === "triggered"
+                        ? "animate-bounce text-rose-600"
+                        : "text-primary"
+                    }`}
+                  />
+                  <span
+                    className={
+                      alarmState === "triggered"
+                        ? "text-rose-700 font-extrabold"
+                        : "text-primary"
+                    }
+                  >
+                    Smart Stop Alarm
+                  </span>
                 </div>
-                <span className="text-[11px] font-semibold text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  {alarmState === "armed" && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
+                      <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Armed
+                    </span>
+                  )}
+                  {alarmState === "triggered" && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-rose-500 text-white px-2 py-0.5 text-[10px] font-extrabold animate-bounce shadow-xs">
+                      🔔 Ringing
+                    </span>
+                  )}
+                  {alarmState === "dismissed" && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground border border-border">
+                      ✓ Dismissed
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {alarmState === "triggered" && (
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={handleDismissAlarm}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-98 text-white px-4 py-2.5 text-xs font-black shadow-md transition-all"
+                  >
+                    <Volume2 className="size-4 animate-pulse" />
+                    DISMISS ALARM
+                  </button>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground pt-0.5">
+                <span>Trigger Distance:</span>
+                <span>
                   {alarmTriggerMode === "2_stops"
-                    ? "Rings 2 stops before destination"
+                    ? "2 stops before destination"
                     : alarmTriggerMode === "1_stop"
-                      ? "Rings 1 stop before destination"
+                      ? "1 stop before destination"
                       : alarmTriggerMode === "500m"
-                        ? "Rings within 500m"
-                        : "Rings within 250m"}
+                        ? "Within 500m"
+                        : "Within 250m"}
                 </span>
               </div>
 
@@ -1208,7 +1734,18 @@ function RouteDetailsPage() {
                     type="button"
                     onClick={() => {
                       setAlarmTriggerMode(opt.id);
-                      toast.info(`Alarm trigger set to ${opt.label} before destination.`);
+                      const prefs = getAlarmPreferences();
+                      saveAlarmPreferences({
+                        ...prefs,
+                        triggerMode: opt.id,
+                        stopsAhead: opt.id === "1_stop" ? 1 : 2,
+                      });
+                      setAlarmState("armed");
+                      lastAlarmFiredRef.current = "";
+                      unlockAudioContext();
+                      toast.info(
+                        `Alarm armed: will ring ${opt.label} before destination.`,
+                      );
                     }}
                     className={`rounded-lg py-1 text-[11px] font-bold transition text-center ${
                       alarmTriggerMode === opt.id
@@ -1222,28 +1759,37 @@ function RouteDetailsPage() {
               </div>
             </div>
 
-            {/* Action buttons: Pause Tracking / Exit Journey */}
+            {/* Action buttons: Pause Tracking / Reverse Journey / Exit Journey */}
             <div className="flex items-center gap-2 pt-1">
               <button
                 type="button"
                 onClick={handlePauseTracking}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-input bg-card px-4 py-2.5 text-xs font-bold text-foreground shadow-sm transition hover:bg-tint active:scale-98"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-input bg-card px-3 py-2.5 text-xs font-bold text-foreground shadow-sm transition hover:bg-tint active:scale-98"
               >
                 {journey.journey_status === "active" ? (
                   <>
-                    <Pause className="size-4 text-amber-600" /> Pause Tracking
+                    <Pause className="size-4 text-amber-600" /> Pause
                   </>
                 ) : (
                   <>
-                    <Play className="size-4 text-emerald-600" /> Resume Tracking
+                    <Play className="size-4 text-emerald-600" /> Resume
                   </>
                 )}
               </button>
 
               <button
                 type="button"
+                onClick={handleReverseJourney}
+                title="Reverse journey direction (swap origin & destination)"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-purple-50 px-3 py-2.5 text-xs font-bold text-primary transition hover:bg-purple-100 active:scale-98"
+              >
+                <ArrowUpDown className="size-4" /> Reverse
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setShowExitConfirm(true)}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-destructive/10 px-4 py-2.5 text-xs font-bold text-destructive transition hover:bg-destructive/20 active:scale-98"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-destructive/10 px-3.5 py-2.5 text-xs font-bold text-destructive transition hover:bg-destructive/20 active:scale-98"
               >
                 <X className="size-4" /> Exit
               </button>
@@ -1267,7 +1813,10 @@ function RouteDetailsPage() {
                     className="w-full appearance-none rounded-xl border border-input bg-card px-3 py-2 pr-8 text-xs font-bold text-foreground outline-none focus:border-primary"
                   >
                     {stops.map(({ stop, seq }) => (
-                      <option key={stop.id} value={stop.id}>
+                      <option
+                        key={`boarding-${seq}-${stop.id}`}
+                        value={stop.id}
+                      >
                         {seq}. {stop.name}
                       </option>
                     ))}
@@ -1287,7 +1836,7 @@ function RouteDetailsPage() {
                     className="w-full appearance-none rounded-xl border border-input bg-card px-3 py-2 pr-8 text-xs font-bold text-foreground outline-none focus:border-primary"
                   >
                     {stops.map(({ stop, seq }) => (
-                      <option key={stop.id} value={stop.id}>
+                      <option key={`dest-${seq}-${stop.id}`} value={stop.id}>
                         {seq}. {stop.name}
                       </option>
                     ))}
@@ -1301,7 +1850,9 @@ function RouteDetailsPage() {
             <div className="rounded-xl bg-purple-50/70 p-2.5 text-xs text-foreground flex items-center justify-between border border-purple-100">
               <div className="flex items-center gap-1.5">
                 <span className="size-2 rounded-full bg-primary animate-ping" />
-                <span className="font-semibold text-muted-foreground">Scheduled Duration:</span>
+                <span className="font-semibold text-muted-foreground">
+                  Scheduled Duration:
+                </span>
               </div>
               <span className="font-extrabold text-primary">
                 ~{timingProfile?.totalDurationMins ?? 41} mins (
@@ -1309,15 +1860,27 @@ function RouteDetailsPage() {
               </span>
             </div>
 
-            {/* Start Journey Primary Button */}
-            <button
-              type="button"
-              onClick={handleStartJourney}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-extrabold text-white shadow-md transition hover:bg-primary/95 active:scale-98"
-            >
-              <Navigation className="size-4 fill-white" />
-              Start Live Journey
-            </button>
+            {/* Start Journey and Reverse Buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleStartJourney}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-extrabold text-white shadow-md transition hover:bg-primary/95 active:scale-98"
+              >
+                <Navigation className="size-4 fill-white" />
+                Start Live Journey
+              </button>
+
+              <button
+                type="button"
+                onClick={handleReverseJourney}
+                title="Reverse journey direction (swap stops)"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-purple-50 px-3.5 py-3 text-xs font-bold text-primary transition hover:bg-purple-100 active:scale-98 shrink-0"
+              >
+                <ArrowUpDown className="size-4" />
+                <span>Reverse</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -1330,7 +1893,8 @@ function RouteDetailsPage() {
               Complete Stop Timeline ({stopTimes.length} stops)
             </h2>
             <span className="text-[11px] text-muted-foreground font-medium">
-              ~{timingProfile?.totalDurationMins ?? totalDurationMinutes} min journey
+              ~{timingProfile?.totalDurationMins ?? totalDurationMinutes} min
+              journey
             </span>
           </div>
 
@@ -1341,19 +1905,25 @@ function RouteDetailsPage() {
                 const isDest = item.stop.id === destinationStopId;
 
                 // Live journey status for this stop
-                const isCurrentInJourney = isTracking && liveState.activeStopIndex === idx;
-                const isPassedInJourney = isTracking && liveState.activeStopIndex > idx;
-                const isUpcomingInJourney = isTracking && liveState.activeStopIndex < idx;
+                const isCurrentInJourney =
+                  isTracking && liveState.activeStopIndex === idx;
+                const isPassedInJourney =
+                  isTracking && liveState.activeStopIndex > idx;
+                const isUpcomingInJourney =
+                  isTracking && liveState.activeStopIndex < idx;
 
                 const isSelected = item.stop.id === selectedTimelineStopId;
 
                 const walkDistM = userLoc
-                  ? distanceMeters(userLoc, { lat: item.stop.lat, lon: item.stop.lon })
+                  ? distanceMeters(userLoc, {
+                      lat: item.stop.lat,
+                      lon: item.stop.lon,
+                    })
                   : null;
 
                 return (
                   <div
-                    key={item.stop.id}
+                    key={`${item.seq}-${item.stop.id}`}
                     id={`stop-item-${item.stop.id}`}
                     ref={isBoarding ? boardingCardRef : undefined}
                     onClick={() => {
@@ -1391,14 +1961,20 @@ function RouteDetailsPage() {
                                   : "bg-slate-200 text-slate-600"
                         }`}
                       >
-                        {isPassedInJourney ? <CheckCircle2 className="size-3.5" /> : item.seq}
+                        {isPassedInJourney ? (
+                          <CheckCircle2 className="size-3.5" />
+                        ) : (
+                          item.seq
+                        )}
                       </div>
 
                       {/* Vertical line connecting to next stop */}
                       {idx < stopTimes.length - 1 && (
                         <div
                           className={`w-0.5 my-1 min-h-[30px] rounded-full ${
-                            isPassedInJourney ? "bg-emerald-400" : "bg-[#800080]"
+                            isPassedInJourney
+                              ? "bg-emerald-400"
+                              : "bg-[#800080]"
                           }`}
                         />
                       )}
@@ -1435,7 +2011,9 @@ function RouteDetailsPage() {
                             +{formatDistance(item.distFromPrevMeters)}
                           </span>
                         ) : (
-                          <span className="font-semibold text-muted-foreground">Origin Stop</span>
+                          <span className="font-semibold text-muted-foreground">
+                            Origin Stop
+                          </span>
                         )}
                         <span>•</span>
                         <span>Dep: {formatClock(item.departureTime)}</span>
@@ -1464,7 +2042,8 @@ function RouteDetailsPage() {
                       {isCurrentInJourney && (
                         <div className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-primary px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
                           <Bus className="size-3" /> Bus is here now (
-                          {formatCountdown(liveState.nextStopRemainingSec)} to next)
+                          {formatCountdown(liveState.nextStopRemainingSec)} to
+                          next)
                         </div>
                       )}
 
@@ -1493,7 +2072,9 @@ function RouteDetailsPage() {
                 <span className="rounded-lg bg-primary px-2.5 py-0.5 text-xs font-black text-white">
                   BUS {route.route_no}
                 </span>
-                <h3 className="text-sm font-bold text-foreground">Scheduled Timetable</h3>
+                <h3 className="text-sm font-bold text-foreground">
+                  Scheduled Timetable
+                </h3>
               </div>
               <button
                 type="button"
@@ -1564,7 +2145,9 @@ function RouteDetailsPage() {
                     key={idx}
                     className="flex flex-col items-center justify-center rounded-xl bg-tint p-2 text-center border border-border/60"
                   >
-                    <span className="text-xs font-bold text-foreground">{formatClock(time)}</span>
+                    <span className="text-xs font-bold text-foreground">
+                      {formatClock(time)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -1579,10 +2162,12 @@ function RouteDetailsPage() {
       {showExitConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-sm rounded-3xl bg-card p-5 shadow-2xl border border-border space-y-3">
-            <h3 className="text-base font-extrabold text-foreground">Exit Active Journey?</h3>
+            <h3 className="text-base font-extrabold text-foreground">
+              Exit Active Journey?
+            </h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Are you sure you want to exit tracking for Route {route.route_no}? Your journey
-              progress will be saved to Recent Trips.
+              Are you sure you want to exit tracking for Route {route.route_no}?
+              Your journey progress will be saved to Recent Trips.
             </p>
             <div className="flex gap-2 pt-2">
               <button
@@ -1622,7 +2207,8 @@ function RouteDetailsPage() {
                 {completedSummary.destination_stop.name}
               </h3>
               <p className="text-xs text-muted-foreground">
-                Bus {completedSummary.route_no} • From {completedSummary.boarding_stop.name}
+                Bus {completedSummary.route_no} • From{" "}
+                {completedSummary.boarding_stop.name}
               </p>
             </div>
 
@@ -1637,13 +2223,19 @@ function RouteDetailsPage() {
                 </p>
               </div>
               <div className="border-x border-border">
-                <p className="text-[10px] font-bold uppercase text-muted-foreground">Distance</p>
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                  Distance
+                </p>
                 <p className="text-sm font-black text-primary">
-                  {formatDistance(completedSummary.total_distance_meters ?? 14200)}
+                  {formatDistance(
+                    completedSummary.total_distance_meters ?? 14200,
+                  )}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase text-muted-foreground">Fare</p>
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                  Fare
+                </p>
                 <p className="text-sm font-black text-emerald-600">
                   {completedSummary.fare_paid ?? "₹20"}
                 </p>

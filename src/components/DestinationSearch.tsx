@@ -1,6 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Clock, History, Loader2, MapPin, Mic, Search, Trash2, X } from "lucide-react";
+import {
+  Clock,
+  History,
+  Loader2,
+  MapPin,
+  Mic,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { searchPlaces } from "@/lib/maptiler.functions";
 import {
@@ -13,10 +22,10 @@ import type { Stop } from "@/lib/transit";
 
 export type Destination = {
   name: string;
-  context?: string;
+  context?: string | undefined;
   lat: number;
   lon: number;
-  stopId?: string;
+  stopId?: string | undefined;
 };
 
 export function DestinationSearch({
@@ -52,7 +61,11 @@ export function DestinationSearch({
     const q = debounced.toLowerCase();
     if (q.length < 2) return [];
     return stops
-      .filter((s) => s.name.toLowerCase().includes(q) || (s.area ?? "").toLowerCase().includes(q))
+      .filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          (s.area ?? "").toLowerCase().includes(q),
+      )
       .slice(0, 4);
   }, [debounced, stops]);
 
@@ -93,7 +106,9 @@ export function DestinationSearch({
   return (
     <section className={bare ? className : `trako-card p-4 ${className}`}>
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-extrabold text-foreground">Where are you going?</h2>
+        <h2 className="text-base font-extrabold text-foreground">
+          Where are you going?
+        </h2>
         {!selected && history.length > 0 && debounced.length === 0 && (
           <button
             type="button"
@@ -108,7 +123,9 @@ export function DestinationSearch({
       {selected ? (
         <div className="mt-2.5 flex items-center gap-2 rounded-2xl bg-tint px-3.5 py-2.5 border border-primary/20">
           <MapPin className="size-4 shrink-0 text-primary" />
-          <span className="min-w-0 flex-1 truncate text-sm font-semibold">{selected.name}</span>
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+            {selected.name}
+          </span>
           <button
             type="button"
             onClick={() => {
@@ -131,7 +148,9 @@ export function DestinationSearch({
             placeholder="Search stops, colleges, landmarks..."
             className="min-w-0 flex-1 bg-transparent text-xs sm:text-sm font-medium outline-none placeholder:text-muted-foreground"
           />
-          {isFetching && <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />}
+          {isFetching && (
+            <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
+          )}
           <button
             type="button"
             aria-label="Voice search"
@@ -199,7 +218,9 @@ export function DestinationSearch({
                   STOP
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-semibold">{stop.name}</span>
+                  <span className="block truncate text-sm font-semibold">
+                    {stop.name}
+                  </span>
                   {stop.area && (
                     <span className="block truncate text-xs text-muted-foreground">
                       {stop.area}
@@ -228,7 +249,9 @@ export function DestinationSearch({
               >
                 <MapPin className="size-4 shrink-0 text-primary" />
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-semibold">{place.name}</span>
+                  <span className="block truncate text-sm font-semibold">
+                    {place.name}
+                  </span>
                   {place.context && (
                     <span className="block truncate text-xs text-muted-foreground">
                       {place.context}

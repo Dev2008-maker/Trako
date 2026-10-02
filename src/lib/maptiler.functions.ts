@@ -1,19 +1,37 @@
 import { createServerFn } from "@tanstack/react-start";
 
+export type MapTileSource = {
+  type: string;
+  tiles: string[];
+  tileSize: number;
+  attribution: string;
+};
+
+export type MapLayer = {
+  id: string;
+  type: string;
+  source: string;
+};
+
 export type MapConfig = {
   style:
     | string
     | {
-        version: 8;
-        sources: Record<string, unknown>;
-        layers: Array<Record<string, unknown>>;
+        version: number;
+        sources: Record<string, MapTileSource>;
+        layers: MapLayer[];
       };
 };
 
 /** A dependable street-map style. Place search can still use MapTiler when configured. */
 export const getMapConfig = createServerFn({ method: "GET" }).handler(
   async (): Promise<MapConfig> => {
-    const key = process.env["MAPTILER_API_KEY"] || process.env["VITE_MAPTILER_API_KEY"];
+    const key =
+      process.env["VITE_MAPTILER_API_KEY"] ||
+      process.env["MAPTILER_API_KEY"] ||
+      (typeof import.meta !== "undefined" && import.meta.env
+        ? import.meta.env["VITE_MAPTILER_API_KEY"]
+        : undefined);
     if (key) {
       return {
         style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${key}`,
@@ -25,14 +43,9 @@ export const getMapConfig = createServerFn({ method: "GET" }).handler(
         sources: {
           streets: {
             type: "raster",
-            tiles: [
-              "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-              "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-              "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-              "https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-            ],
+            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
             tileSize: 256,
-            attribution: "© OpenStreetMap contributors, © CARTO",
+            attribution: "© OpenStreetMap contributors",
           },
         },
         layers: [{ id: "streets", type: "raster", source: "streets" }],
@@ -55,11 +68,18 @@ export const searchPlaces = createServerFn({ method: "GET" })
     query: String(input.query ?? "").slice(0, 120),
   }))
   .handler(async ({ data }): Promise<PlaceResult[]> => {
-    const key = process.env["MAPTILER_API_KEY"];
+    const key =
+      process.env["VITE_MAPTILER_API_KEY"] ||
+      process.env["MAPTILER_API_KEY"] ||
+      (typeof import.meta !== "undefined" && import.meta.env
+        ? import.meta.env["VITE_MAPTILER_API_KEY"]
+        : undefined);
     const q = data.query.trim();
     if (!key || q.length < 2) return [];
 
-    const url = new URL(`https://api.maptiler.com/geocoding/${encodeURIComponent(q)}.json`);
+    const url = new URL(
+      `https://api.maptiler.com/geocoding/${encodeURIComponent(q)}.json`,
+    );
     url.searchParams.set("key", key);
     url.searchParams.set("country", "in");
     url.searchParams.set("proximity", "73.8567,18.5204");

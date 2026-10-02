@@ -12,12 +12,16 @@ export function NearbyStopCard({
   selected,
   onSelect,
   upcomingBuses,
+  isBusesLoading,
 }: {
   stop: Stop;
   meters: number;
-  selected?: boolean;
-  onSelect?: () => void;
-  upcomingBuses?: Array<{ route_no: string; eta_minutes: number; destination: string }>;
+  selected?: boolean | undefined;
+  onSelect?: (() => void) | undefined;
+  upcomingBuses?:
+    | Array<{ route_no: string; eta_minutes: number; destination: string }>
+    | undefined;
+  isBusesLoading?: boolean | undefined;
 }) {
   const [isFav, setIsFav] = useState(() => isStopFavourite(stop.id));
 
@@ -26,7 +30,7 @@ export function NearbyStopCard({
     const nowFav = toggleFavouriteStop({
       id: stop.id,
       name: stop.name,
-      area: stop.area,
+      area: stop.area ?? undefined,
       lat: stop.lat,
       lon: stop.lon,
     });
@@ -38,26 +42,7 @@ export function NearbyStopCard({
     }
   }
 
-  // Fallback realistic next 3 upcoming buses if not provided
-  const buses =
-    upcomingBuses ??
-    (stop.id === "s4" || stop.name.toLowerCase().includes("swargate")
-      ? [
-          { route_no: "103", eta_minutes: 3, destination: "Kothrud Depot" },
-          { route_no: "215", eta_minutes: 8, destination: "Hinjawadi Phase 1" },
-          { route_no: "31", eta_minutes: 14, destination: "Pune Station" },
-        ]
-      : stop.id === "s10" || stop.name.toLowerCase().includes("station")
-        ? [
-            { route_no: "215", eta_minutes: 4, destination: "Hinjawadi Phase 1" },
-            { route_no: "31", eta_minutes: 9, destination: "Hadapsar" },
-            { route_no: "103", eta_minutes: 16, destination: "Katraj Depot" },
-          ]
-        : [
-            { route_no: "103", eta_minutes: 5, destination: "Kothrud Depot" },
-            { route_no: "215", eta_minutes: 11, destination: "Hinjawadi Phase 1" },
-            { route_no: "31", eta_minutes: 19, destination: "Swargate" },
-          ]);
+  const buses = upcomingBuses;
 
   return (
     <div
@@ -68,14 +53,22 @@ export function NearbyStopCard({
       }`}
     >
       <div className="flex items-start justify-between gap-3">
-        <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-left">
+        <button
+          type="button"
+          onClick={onSelect}
+          className="min-w-0 flex-1 text-left"
+        >
           <div className="flex items-center gap-1.5">
             <span className="size-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <p className="truncate text-sm font-extrabold text-foreground">{stop.name}</p>
+            <p className="truncate text-sm font-extrabold text-foreground">
+              {stop.name}
+            </p>
           </div>
 
           <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-semibold text-primary">{formatWalk(meters)}</span>
+            <span className="font-semibold text-primary">
+              {formatWalk(meters)}
+            </span>
             {stop.area && (
               <>
                 <span>•</span>
@@ -90,7 +83,9 @@ export function NearbyStopCard({
           <button
             type="button"
             onClick={handleToggleFav}
-            aria-label={isFav ? "Remove from favourites" : "Add to favourite stops"}
+            aria-label={
+              isFav ? "Remove from favourites" : "Add to favourite stops"
+            }
             className="grid size-8 place-items-center rounded-lg text-amber-500 hover:bg-amber-50 transition active:scale-95"
           >
             <Star
@@ -115,23 +110,41 @@ export function NearbyStopCard({
           <span className="text-muted-foreground font-semibold flex items-center gap-1">
             <Bus className="size-3 text-primary" /> Next Buses Arriving:
           </span>
-          <span className="text-[10px] font-bold text-emerald-700">Active Service</span>
+          {buses && buses.length > 0 && (
+            <span className="text-[10px] font-bold text-emerald-700">
+              Active Service
+            </span>
+          )}
         </div>
 
-        <div className="grid grid-cols-3 gap-1.5">
-          {buses.slice(0, 3).map((b, idx) => (
-            <Link
-              key={idx}
-              to="/routes"
-              className="flex flex-col items-center justify-center rounded-xl bg-tint/70 p-1.5 text-center border border-border/40 hover:bg-tint hover:border-primary/30 transition"
-            >
-              <div className="flex items-center gap-1">
-                <span className="font-black text-xs text-primary">{b.route_no}</span>
-              </div>
-              <span className="text-[10px] font-bold text-emerald-600">in {b.eta_minutes}m</span>
-            </Link>
-          ))}
-        </div>
+        {isBusesLoading && !buses ? (
+          <p className="text-[11px] text-muted-foreground py-1">
+            Checking upcoming buses…
+          </p>
+        ) : !buses || buses.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground italic py-1">
+            No buses available today
+          </p>
+        ) : (
+          <div className="grid grid-cols-3 gap-1.5">
+            {buses.slice(0, 3).map((b, idx) => (
+              <Link
+                key={idx}
+                to="/routes"
+                className="flex flex-col items-center justify-center rounded-xl bg-tint/70 p-1.5 text-center border border-border/40 hover:bg-tint hover:border-primary/30 transition"
+              >
+                <div className="flex items-center gap-1">
+                  <span className="font-black text-xs text-primary">
+                    {b.route_no}
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-600">
+                  in {b.eta_minutes}m
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

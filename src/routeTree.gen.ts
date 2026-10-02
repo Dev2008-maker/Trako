@@ -14,6 +14,9 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as NearbyRouteImport } from './routes/nearby'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as TripsRouteImport } from './routes/trips'
+import { Route as GroupsIndexRouteImport } from './routes/groups.index'
+import { Route as GroupsGroupIdRouteImport } from './routes/groups.$groupId'
+import { Route as GroupsJoinRouteImport } from './routes/groups.join'
 import { Route as RoutesIndexRouteImport } from './routes/routes.index'
 import { Route as RoutesRouteIdRouteImport } from './routes/routes.$routeId'
 import { Route as StopStopIdRouteImport } from './routes/stop.$stopId'
@@ -43,6 +46,21 @@ const TripsRoute = TripsRouteImport.update({
   path: '/trips',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GroupsIndexRoute = GroupsIndexRouteImport.update({
+  id: '/groups/',
+  path: '/groups/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GroupsGroupIdRoute = GroupsGroupIdRouteImport.update({
+  id: '/groups/$groupId',
+  path: '/groups/$groupId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GroupsJoinRoute = GroupsJoinRouteImport.update({
+  id: '/groups/join',
+  path: '/groups/join',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RoutesIndexRoute = RoutesIndexRouteImport.update({
   id: '/routes/',
   path: '/routes/',
@@ -65,8 +83,11 @@ export interface FileRoutesByFullPath {
   '/nearby': typeof NearbyRoute
   '/profile': typeof ProfileRoute
   '/trips': typeof TripsRoute
+  '/groups/$groupId': typeof GroupsGroupIdRoute
+  '/groups/join': typeof GroupsJoinRoute
   '/routes/$routeId': typeof RoutesRouteIdRoute
   '/stop/$stopId': typeof StopStopIdRoute
+  '/groups/': typeof GroupsIndexRoute
   '/routes/': typeof RoutesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -75,8 +96,11 @@ export interface FileRoutesByTo {
   '/nearby': typeof NearbyRoute
   '/profile': typeof ProfileRoute
   '/trips': typeof TripsRoute
+  '/groups/$groupId': typeof GroupsGroupIdRoute
+  '/groups/join': typeof GroupsJoinRoute
   '/routes/$routeId': typeof RoutesRouteIdRoute
   '/stop/$stopId': typeof StopStopIdRoute
+  '/groups': typeof GroupsIndexRoute
   '/routes': typeof RoutesIndexRoute
 }
 export interface FileRoutesById {
@@ -86,8 +110,11 @@ export interface FileRoutesById {
   '/nearby': typeof NearbyRoute
   '/profile': typeof ProfileRoute
   '/trips': typeof TripsRoute
+  '/groups/$groupId': typeof GroupsGroupIdRoute
+  '/groups/join': typeof GroupsJoinRoute
   '/routes/$routeId': typeof RoutesRouteIdRoute
   '/stop/$stopId': typeof StopStopIdRoute
+  '/groups/': typeof GroupsIndexRoute
   '/routes/': typeof RoutesIndexRoute
 }
 export interface FileRouteTypes {
@@ -98,8 +125,11 @@ export interface FileRouteTypes {
     | '/nearby'
     | '/profile'
     | '/trips'
+    | '/groups/$groupId'
+    | '/groups/join'
     | '/routes/$routeId'
     | '/stop/$stopId'
+    | '/groups/'
     | '/routes/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -108,8 +138,11 @@ export interface FileRouteTypes {
     | '/nearby'
     | '/profile'
     | '/trips'
+    | '/groups/$groupId'
+    | '/groups/join'
     | '/routes/$routeId'
     | '/stop/$stopId'
+    | '/groups'
     | '/routes'
   id:
     | '__root__'
@@ -118,8 +151,11 @@ export interface FileRouteTypes {
     | '/nearby'
     | '/profile'
     | '/trips'
+    | '/groups/$groupId'
+    | '/groups/join'
     | '/routes/$routeId'
     | '/stop/$stopId'
+    | '/groups/'
     | '/routes/'
   fileRoutesById: FileRoutesById
 }
@@ -129,8 +165,11 @@ export interface RootRouteChildren {
   NearbyRoute: typeof NearbyRoute
   ProfileRoute: typeof ProfileRoute
   TripsRoute: typeof TripsRoute
+  GroupsGroupIdRoute: typeof GroupsGroupIdRoute
+  GroupsJoinRoute: typeof GroupsJoinRoute
   RoutesRouteIdRoute: typeof RoutesRouteIdRoute
   StopStopIdRoute: typeof StopStopIdRoute
+  GroupsIndexRoute: typeof GroupsIndexRoute
   RoutesIndexRoute: typeof RoutesIndexRoute
 }
 
@@ -171,6 +210,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TripsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/groups/': {
+      id: '/groups/'
+      path: '/groups'
+      fullPath: '/groups/'
+      preLoaderRoute: typeof GroupsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/groups/$groupId': {
+      id: '/groups/$groupId'
+      path: '/groups/$groupId'
+      fullPath: '/groups/$groupId'
+      preLoaderRoute: typeof GroupsGroupIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/groups/join': {
+      id: '/groups/join'
+      path: '/groups/join'
+      fullPath: '/groups/join'
+      preLoaderRoute: typeof GroupsJoinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/routes/': {
       id: '/routes/'
       path: '/routes'
@@ -201,8 +261,11 @@ const rootRouteChildren: RootRouteChildren = {
   NearbyRoute: NearbyRoute,
   ProfileRoute: ProfileRoute,
   TripsRoute: TripsRoute,
+  GroupsGroupIdRoute: GroupsGroupIdRoute,
+  GroupsJoinRoute: GroupsJoinRoute,
   RoutesRouteIdRoute: RoutesRouteIdRoute,
   StopStopIdRoute: StopStopIdRoute,
+  GroupsIndexRoute: GroupsIndexRoute,
   RoutesIndexRoute: RoutesIndexRoute,
 }
 export const routeTree = rootRouteImport

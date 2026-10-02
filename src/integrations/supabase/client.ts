@@ -11,11 +11,15 @@ function isNewSupabaseApiKey(value: string): boolean {
 function createSupabaseFetch(supabaseKey: string): typeof fetch {
   return (input, init) => {
     const headers = new Headers(
-      typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
+      typeof Request !== "undefined" && input instanceof Request
+        ? input.headers
+        : undefined,
     );
 
     if (init?.headers) {
-      new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+      new Headers(init.headers).forEach((value, key) =>
+        headers.set(key, value),
+      );
     }
 
     // New Supabase API keys are opaque strings, not bearer JWTs.
@@ -32,15 +36,24 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 function createSupabaseClient() {
-  // Use import.meta.env for client-side (Vite build-time replacement)
-  // Fall back to process.env for SSR (server-side rendering)
-  const SUPABASE_URL = import.meta.env["VITE_SUPABASE_URL"] || process.env["SUPABASE_URL"];
+  // Verify Supabase client uses VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
+  const SUPABASE_URL =
+    (typeof import.meta !== "undefined" &&
+      import.meta.env?.["VITE_SUPABASE_URL"]) ||
+    (typeof process !== "undefined"
+      ? process.env?.["VITE_SUPABASE_URL"] || process.env?.["SUPABASE_URL"]
+      : undefined);
   const SUPABASE_PUBLISHABLE_KEY =
-    import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] || process.env["SUPABASE_PUBLISHABLE_KEY"];
+    (typeof import.meta !== "undefined" &&
+      import.meta.env?.["VITE_SUPABASE_PUBLISHABLE_KEY"]) ||
+    (typeof process !== "undefined"
+      ? process.env?.["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
+        process.env?.["SUPABASE_PUBLISHABLE_KEY"]
+      : undefined);
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-    console.warn(
-      "[Supabase] Missing Supabase environment variable(s). Using mock transit dataset.",
+    console.error(
+      "[Supabase] Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY environment variables.",
     );
     return createMockSupabaseClient();
   }
@@ -61,9 +74,12 @@ let _supabase: ReturnType<typeof createSupabaseClient> | undefined;
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
-export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
-  get(_, prop, receiver) {
-    if (!_supabase) _supabase = createSupabaseClient();
-    return Reflect.get(_supabase, prop, receiver);
+export const supabase = new Proxy(
+  {} as ReturnType<typeof createSupabaseClient>,
+  {
+    get(_, prop, receiver) {
+      if (!_supabase) _supabase = createSupabaseClient();
+      return Reflect.get(_supabase, prop, receiver);
+    },
   },
-});
+);

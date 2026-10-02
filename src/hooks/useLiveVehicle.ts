@@ -5,7 +5,12 @@ import {
   matchVehicleToRoute,
   type GTFSRealtimeVehicle,
 } from "@/services/gtfsRealtime";
-import { calculateBearing, distanceMeters, interpolatePolyline, type LatLng } from "@/lib/geo";
+import {
+  calculateBearing,
+  distanceMeters,
+  interpolatePolyline,
+  type LatLng,
+} from "@/lib/geo";
 
 export interface UseLiveVehicleOptions {
   routeId?: string | undefined;
@@ -35,7 +40,9 @@ export interface UseLiveVehicleResult {
   rawVehicle: GTFSRealtimeVehicle | null;
 }
 
-export function useLiveVehicle(options: UseLiveVehicleOptions): UseLiveVehicleResult {
+export function useLiveVehicle(
+  options: UseLiveVehicleOptions,
+): UseLiveVehicleResult {
   const {
     routeId = "",
     routeNo = "",
@@ -70,7 +77,8 @@ export function useLiveVehicle(options: UseLiveVehicleOptions): UseLiveVehicleRe
 
   // 3. Keep track of previous and target GPS coordinates for smooth interpolation
   const [animatedGps, setAnimatedGps] = useState<LatLng | null>(() => {
-    if (matchedLiveVehicle) return { lat: matchedLiveVehicle.lat, lon: matchedLiveVehicle.lon };
+    if (matchedLiveVehicle)
+      return { lat: matchedLiveVehicle.lat, lon: matchedLiveVehicle.lon };
     return demoPosition ?? null;
   });
 
@@ -83,7 +91,10 @@ export function useLiveVehicle(options: UseLiveVehicleOptions): UseLiveVehicleRe
   // When live vehicle changes from the 8s poll, animate smoothly between previous and new GPS
   useEffect(() => {
     if (isLive && matchedLiveVehicle) {
-      const newTarget: LatLng = { lat: matchedLiveVehicle.lat, lon: matchedLiveVehicle.lon };
+      const newTarget: LatLng = {
+        lat: matchedLiveVehicle.lat,
+        lon: matchedLiveVehicle.lon,
+      };
 
       // If first location received
       if (!targetGpsRef.current) {
@@ -103,7 +114,8 @@ export function useLiveVehicle(options: UseLiveVehicleOptions): UseLiveVehicleRe
       // Calculate bearing from GPS delta if vehicle bearing not provided
       const dist = distanceMeters(prev, newTarget);
       if (dist > 1.5) {
-        currentBearingRef.current = matchedLiveVehicle.bearing || calculateBearing(prev, newTarget);
+        currentBearingRef.current =
+          matchedLiveVehicle.bearing || calculateBearing(prev, newTarget);
       }
 
       // Smooth interpolation over the 8s polling interval (8000ms easing)
@@ -143,6 +155,7 @@ export function useLiveVehicle(options: UseLiveVehicleOptions): UseLiveVehicleRe
         setAnimatedGps(demoPosition);
         currentBearingRef.current = demoBearing;
       }
+      return undefined;
     }
   }, [isLive, matchedLiveVehicle, demoPosition, demoBearing]);
 
@@ -156,7 +169,9 @@ export function useLiveVehicle(options: UseLiveVehicleOptions): UseLiveVehicleRe
   }, []);
 
   const currentPos = isLive ? animatedGps : (demoPosition ?? animatedGps);
-  const bearing = isLive ? matchedLiveVehicle?.bearing || currentBearingRef.current : demoBearing;
+  const bearing = isLive
+    ? matchedLiveVehicle?.bearing || currentBearingRef.current
+    : demoBearing;
   const speed = isLive ? (matchedLiveVehicle?.speed ?? 26) : demoSpeed;
 
   return {

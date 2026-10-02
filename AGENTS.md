@@ -1,12 +1,13 @@
-<!-- LOVABLE:BEGIN -->
+# TRAKO — Agent Guidelines
 
 > [!IMPORTANT]
-> This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
-> published git history — force pushing, or rebasing/amending/squashing commits
-> that are already pushed — as it rewrites history on Lovable's side and the
-> user will likely lose their project history.
+> Avoid rewriting published git history — force pushing, or rebasing/amending/squashing commits that are already pushed — to prevent desynchronization with remote environments.
 >
-> Commits you push to the connected branch sync back to Lovable and show up in
-> the editor, so keep the branch in a working state.
+> Always keep branches in a clean, buildable, and working state.
 
-<!-- LOVABLE:END -->
+## Project Guidelines
+
+- **Architecture:** React 19 + TanStack Start (SSR) + TanStack Router + TanStack Query + Tailwind CSS + MapLibre GL + Supabase.
+- **Data Integrity:** Real GTFS tables (`stops`, `routes`, `trips`, `stop_times`, `shapes`) are hosted in Supabase. Do not mutate or drop GTFS schema tables.
+- **Styling:** Consistent purple & white theme (`#800080`, `#9932cc`, clean white/grey surfaces).
+- **Code Quality:** Ensure `npm run lint`, `npx tsc --noEmit`, and `npm run build` pass without regressions.

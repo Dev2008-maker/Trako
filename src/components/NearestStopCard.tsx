@@ -41,7 +41,11 @@ export function NearestStopCard({
       </div>
 
       {extraCount > 0 && (
-        <button type="button" onClick={onExpand} className="mt-3 text-sm font-semibold text-accent">
+        <button
+          type="button"
+          onClick={onExpand}
+          className="mt-3 text-sm font-semibold text-accent"
+        >
           {extraCount} more nearby stops
         </button>
       )}

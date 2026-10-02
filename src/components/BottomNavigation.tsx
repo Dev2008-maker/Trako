@@ -1,17 +1,18 @@
 import { Link } from "@tanstack/react-router";
-import { Home, MapPin, Route as RouteIcon, User } from "lucide-react";
+import { Home, MapPin, Route as RouteIcon, User, Users } from "lucide-react";
 
 const items = [
   { to: "/", label: "Home", icon: Home },
   { to: "/nearby", label: "Nearby", icon: MapPin },
   { to: "/trips", label: "Trips", icon: RouteIcon },
+  { to: "/groups", label: "Groups", icon: Users },
   { to: "/profile", label: "Profile", icon: User },
 ] as const;
 
 export function BottomNavigation() {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur pb-[env(safe-area-inset-bottom,0px)]">
-      <ul className="mx-auto grid max-w-md grid-cols-4">
+      <ul className="mx-auto grid max-w-md grid-cols-5">
         {items.map(({ to, label, icon: Icon }) => (
           <li key={to}>
             <Link

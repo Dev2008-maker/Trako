@@ -16,9 +16,9 @@ export interface RouteGeoJSONFeature {
   type: "Feature";
   properties: {
     routeId: string;
-    routeNo?: string;
-    direction?: number;
-    color?: string;
+    routeNo?: string | undefined;
+    direction?: number | undefined;
+    color?: string | undefined;
   };
   geometry: {
     type: "LineString";
@@ -29,8 +29,13 @@ export interface RouteGeoJSONFeature {
 /**
  * Parses raw GTFS shapes.txt CSV content into an ordered GeoJSON coordinates dictionary.
  */
-export function parseGTFSShapesCSV(csvContent: string): Map<string, [number, number][]> {
-  const shapesMap = new Map<string, Array<{ seq: number; coord: [number, number] }>>();
+export function parseGTFSShapesCSV(
+  csvContent: string,
+): Map<string, [number, number][]> {
+  const shapesMap = new Map<
+    string,
+    Array<{ seq: number; coord: [number, number] }>
+  >();
   const lines = csvContent.split(/\r?\n/);
 
   if (lines.length <= 1) return new Map();
@@ -52,7 +57,8 @@ export function parseGTFSShapesCSV(csvContent: string): Map<string, [number, num
     const shapeId = parts[idIdx]?.trim();
     const lat = Number.parseFloat(parts[latIdx]?.trim() || "");
     const lon = Number.parseFloat(parts[lonIdx]?.trim() || "");
-    const seq = seqIdx !== -1 ? Number.parseInt(parts[seqIdx]?.trim() || "0", 10) : i;
+    const seq =
+      seqIdx !== -1 ? Number.parseInt(parts[seqIdx]?.trim() || "0", 10) : i;
 
     if (!shapeId || Number.isNaN(lat) || Number.isNaN(lon)) continue;
 

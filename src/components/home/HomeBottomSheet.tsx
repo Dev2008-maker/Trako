@@ -1,4 +1,10 @@
-import { type ReactNode, useEffect, useRef, useState, useCallback } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 
 export type SnapPosition = "peek" | "half" | "expanded";
 
@@ -81,7 +87,8 @@ export function HomeBottomSheet({
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true);
     dragStartY.current = e.clientY;
-    dragStartHeight.current = heightPx ?? Math.round(window.innerHeight * SNAP_RATIOS[snap]);
+    dragStartHeight.current =
+      heightPx ?? Math.round(window.innerHeight * SNAP_RATIOS[snap]);
     hasDraggedFar.current = false;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
@@ -118,7 +125,8 @@ export function HomeBottomSheet({
     }
 
     // Determine closest snap position based on final height ratio
-    const currentH = heightPx ?? Math.round(window.innerHeight * SNAP_RATIOS[snap]);
+    const currentH =
+      heightPx ?? Math.round(window.innerHeight * SNAP_RATIOS[snap]);
     const ratio = currentH / window.innerHeight;
     if (ratio < 0.69) {
       snapTo("peek");
@@ -139,7 +147,9 @@ export function HomeBottomSheet({
       style={{
         height: computedHeight,
         transition:
-          isDragging || heightPx === null ? "none" : "height 0.32s cubic-bezier(0.16, 1, 0.3, 1)",
+          isDragging || heightPx === null
+            ? "none"
+            : "height 0.32s cubic-bezier(0.16, 1, 0.3, 1)",
       }}
       className={`fixed bottom-0 inset-x-0 mx-auto max-w-lg z-20 flex flex-col pointer-events-none select-none ${className}`}
     >

@@ -1,0 +1,57 @@
+{
+  "DAP": {
+    "title": "Dapodi metro station",
+    "lat": 18.58376,
+    "lon": 73.83383
+  },
+  "BOP": {
+    "title": "Bopodi metro station",
+    "lat": 18.56974,
+    "lon": 73.83813
+  },
+  "KHD": {
+    "title": "Khadki railway station",
+    "lat": 18.5632,
+    "lon": 73.8409
+  },
+  "DST": {
+    "title": "District Court Pune metro station",
+    "lat": 18.52689,
+    "lon": 73.85802
+  },
+  "BWP": {
+    "title": "Budhwar Peth, Pune",
+    "lat": 18.517,
+    "lon": 73.858
+  },
+  "MND": {
+    "title": "Mahatma Phule Mandai metro station",
+    "lat": 18.51302,
+    "lon": 73.85689
+  },
+  "SWG": {
+    "title": "Swargate metro station",
+    "lat": 18.49959,
+    "lon": 73.85781
+  },
+  "IDL": {
+    "title": "Paud Phata metro station",
+    "lat": 18.5091,
+    "lon": 73.82208
+  },
+  "NAL": {
+    "title": "SNDT College metro station",
+    "lat": 18.50725,
+    "lon": 73.82867
+  },
+  "YRW": {
+    "title": "Yerwada metro station",
+    "lat": 18.545265,
+    "lon": 73.886498
+  },
+  "KLN": {
+    "title": "Kalyani Nagar metro station",
+    "lat": 18.544367,
+    "lon": 73.905732
+  }
+}

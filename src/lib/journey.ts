@@ -1,5 +1,11 @@
 import type { Stop, Route } from "./transit";
 import type { LatLng } from "./geo";
+import {
+  createSavedJourney,
+  type SavedJourney,
+  type SavedJourneyIcon,
+} from "./savedJourneys";
+export * from "./savedJourneys";
 
 export type JourneyStop = {
   seq: number;
@@ -21,7 +27,16 @@ export type JourneyState = {
   destination_index: number;
   current_stop_index: number;
   alarm_stop_index: number;
-  journey_status: "active" | "paused" | "completed";
+  journey_status:
+    | "not_started"
+    | "active"
+    | "paused"
+    | "gps_unavailable"
+    | "interrupted"
+    | "completed";
+  vehicle_tracking_mode?: "scheduled" | "estimated" | "realtime";
+  gps_status?: "active" | "weak" | "unavailable";
+  transit_mode?: "bus" | "metro" | "all";
   started_at: string;
   delay_minutes: number;
   all_stops: JourneyStop[];
@@ -49,15 +64,15 @@ export type SavedRouteItem = {
   route_name: string;
   origin_stop: string;
   destination_stop: string;
-  fare?: string;
-  frequency?: string;
+  fare?: string | undefined;
+  frequency?: string | undefined;
   created_at: string;
 };
 
 export type FavouriteStopItem = {
   stop_id: string;
   name: string;
-  area?: string;
+  area?: string | undefined;
   lat: number;
   lon: number;
   created_at: string;
@@ -67,11 +82,11 @@ export type SearchHistoryItem = {
   id: string;
   type: "destination" | "bus" | "stop";
   query: string;
-  subtitle?: string;
-  lat?: number;
-  lon?: number;
-  stopId?: string;
-  routeId?: string;
+  subtitle?: string | undefined;
+  lat?: number | undefined;
+  lon?: number | undefined;
+  stopId?: string | undefined;
+  routeId?: string | undefined;
   timestamp: number;
 };
 
@@ -104,6 +119,7 @@ export type ScheduledTrip = {
   fare: string;
   frequency: string;
 };
+export * from "./savedJourneys";
 
 // Local storage keys
 const ACTIVE_JOURNEY_KEY = "trako_active_journey";
@@ -114,6 +130,7 @@ const FAVOURITE_STOPS_KEY = "trako_favourite_stops";
 const SEARCH_HISTORY_KEY = "trako_search_history";
 const NOTIFICATIONS_KEY = "trako_notifications";
 const ALARM_PREFS_KEY = "trako_alarm_preferences";
+const SAVED_JOURNEYS_KEY = "trako_saved_journeys";
 
 export const DEFAULT_ALARM_PREFS: AlarmPreferences = {
   soundEnabled: true,
@@ -165,7 +182,9 @@ export function getAlarmPreferences(): AlarmPreferences {
   if (typeof window === "undefined") return DEFAULT_ALARM_PREFS;
   try {
     const raw = localStorage.getItem(ALARM_PREFS_KEY);
-    return raw ? { ...DEFAULT_ALARM_PREFS, ...JSON.parse(raw) } : DEFAULT_ALARM_PREFS;
+    return raw
+      ? { ...DEFAULT_ALARM_PREFS, ...JSON.parse(raw) }
+      : DEFAULT_ALARM_PREFS;
   } catch {
     return DEFAULT_ALARM_PREFS;
   }
@@ -303,11 +322,47 @@ export function saveRecentJourney(journey: JourneyState): void {
   if (typeof window === "undefined") return;
   try {
     const list = getRecentJourneys();
-    const updated = [journey, ...list.filter((j) => j.id !== journey.id)].slice(0, 15);
+    const updated = [journey, ...list.filter((j) => j.id !== journey.id)].slice(
+      0,
+      15,
+    );
     localStorage.setItem(RECENT_JOURNEYS_KEY, JSON.stringify(updated));
   } catch (e) {
     console.warn("Failed to save recent journey", e);
   }
+}
+
+export function clearRecentJourneys(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(RECENT_JOURNEYS_KEY);
+  } catch (e) {
+    console.warn("Failed to clear recent journeys", e);
+  }
+}
+
+export function saveRecentAsSavedJourney(
+  trip: JourneyState,
+  name?: string,
+  icon?: SavedJourneyIcon,
+): SavedJourney {
+  return createSavedJourney({
+    name: name || `${trip.destination_stop.name}`,
+    icon: icon || "❤️",
+    originName: trip.boarding_stop.name,
+    originStopId: trip.boarding_stop.id,
+    originLat: trip.boarding_stop.lat,
+    originLon: trip.boarding_stop.lon,
+    destinationName: trip.destination_stop.name,
+    destinationStopId: trip.destination_stop.id,
+    destinationLat: trip.destination_stop.lat,
+    destinationLon: trip.destination_stop.lon,
+    preferredRouteId: trip.route_id,
+    preferredRouteNo: trip.route_no,
+    transitMode: trip.transit_mode || "bus",
+    alarmStopsAhead: 1,
+    isFavourite: false,
+  });
 }
 
 // ============================================================================
@@ -325,14 +380,16 @@ export function getSavedRoutes(): string[] {
 
 export function toggleSavedRoute(
   routeId: string,
-  meta?: {
-    route_no?: string;
-    name?: string;
-    origin?: string;
-    destination?: string;
-    fare?: string;
-    frequency?: string;
-  },
+  meta?:
+    | {
+        route_no?: string | undefined;
+        name?: string | undefined;
+        origin?: string | undefined;
+        destination?: string | undefined;
+        fare?: string | undefined;
+        frequency?: string | undefined;
+      }
+    | undefined,
 ): boolean {
   if (typeof window === "undefined") return false;
   try {
@@ -352,7 +409,9 @@ export function toggleSavedRoute(
     if (isSaved) {
       const newItem: SavedRouteItem = {
         route_id: routeId,
-        route_no: meta?.route_no ?? (routeId === "r1" ? "103" : routeId === "r2" ? "215" : routeId),
+        route_no:
+          meta?.route_no ??
+          (routeId === "r1" ? "103" : routeId === "r2" ? "215" : routeId),
         route_name: meta?.name ?? "Pune Bus Route",
         origin_stop: meta?.origin ?? "Pune Origin",
         destination_stop: meta?.destination ?? "Pune Destination",
@@ -360,11 +419,20 @@ export function toggleSavedRoute(
         frequency: meta?.frequency ?? "Every 10 mins",
         created_at: new Date().toISOString(),
       };
-      const updatedDetailed = [newItem, ...detailed.filter((d) => d.route_id !== routeId)];
-      localStorage.setItem(SAVED_ROUTES_DETAILED_KEY, JSON.stringify(updatedDetailed));
+      const updatedDetailed = [
+        newItem,
+        ...detailed.filter((d) => d.route_id !== routeId),
+      ];
+      localStorage.setItem(
+        SAVED_ROUTES_DETAILED_KEY,
+        JSON.stringify(updatedDetailed),
+      );
     } else {
       const updatedDetailed = detailed.filter((d) => d.route_id !== routeId);
-      localStorage.setItem(SAVED_ROUTES_DETAILED_KEY, JSON.stringify(updatedDetailed));
+      localStorage.setItem(
+        SAVED_ROUTES_DETAILED_KEY,
+        JSON.stringify(updatedDetailed),
+      );
     }
 
     return isSaved;
@@ -427,7 +495,7 @@ export function isStopFavourite(stopId: string): boolean {
 export function toggleFavouriteStop(stop: {
   id: string;
   name: string;
-  area?: string;
+  area?: string | undefined;
   lat: number;
   lon: number;
 }): boolean {
@@ -502,7 +570,9 @@ export function getSearchHistory(): SearchHistoryItem[] {
   }
 }
 
-export function addSearchHistory(item: Omit<SearchHistoryItem, "id" | "timestamp">): void {
+export function addSearchHistory(
+  item: Omit<SearchHistoryItem, "id" | "timestamp">,
+): void {
   if (typeof window === "undefined") return;
   try {
     const current = getSearchHistory();
@@ -512,7 +582,9 @@ export function addSearchHistory(item: Omit<SearchHistoryItem, "id" | "timestamp
       timestamp: Date.now(),
     };
     // Keep top 5 latest unique searches
-    const filtered = current.filter((c) => c.query.toLowerCase() !== item.query.toLowerCase());
+    const filtered = current.filter(
+      (c) => c.query.toLowerCase() !== item.query.toLowerCase(),
+    );
     const updated = [newItem, ...filtered].slice(0, 5);
     localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(updated));
   } catch (e) {
@@ -573,7 +645,9 @@ export function getNotifications(): NotificationItem[] {
   }
 }
 
-export function addNotification(notif: Omit<NotificationItem, "id" | "timestamp" | "read">): void {
+export function addNotification(
+  notif: Omit<NotificationItem, "id" | "timestamp" | "read">,
+): void {
   if (typeof window === "undefined") return;
   try {
     const current = getNotifications();
@@ -594,7 +668,9 @@ export function markNotificationRead(id: string): void {
   if (typeof window === "undefined") return;
   try {
     const current = getNotifications();
-    const updated = current.map((n) => (n.id === id ? { ...n, read: true } : n));
+    const updated = current.map((n) =>
+      n.id === id ? { ...n, read: true } : n,
+    );
     localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(updated));
   } catch (e) {
     console.warn("Failed to mark notification read", e);
@@ -655,48 +731,242 @@ export function getUpcomingScheduledTrips(): ScheduledTrip[] {
 }
 
 // ============================================================================
-// AUDIO & HAPTIC SYSTEM
+// AUDIO & HAPTIC SYSTEM (ROBUST WEBAUDIO ALARM ENGINE)
 // ============================================================================
-export function playAlarmChime(type: "alarm" | "arrival" | "test" = "alarm"): void {
-  if (typeof window === "undefined") return;
+
+let sharedAudioCtx: AudioContext | null = null;
+let activeAlarmTimer: ReturnType<typeof setInterval> | null = null;
+let activeAutoSilenceTimer: ReturnType<typeof setTimeout> | null = null;
+let isAlarmRinging = false;
+let onStopAlarmCallback: (() => void) | null = null;
+
+function getAudioContext(): AudioContext | null {
+  if (typeof window === "undefined") return null;
   try {
     const AudioContextClass =
       window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextClass) return;
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext;
+    if (!AudioContextClass) return null;
+    if (!sharedAudioCtx || sharedAudioCtx.state === "closed") {
+      sharedAudioCtx = new AudioContextClass();
+    }
+    return sharedAudioCtx;
+  } catch {
+    return null;
+  }
+}
 
-    const ctx = new AudioContextClass();
+/**
+ * Prime and unlock the browser AudioContext during any user gesture
+ * (tap, button press, journey start, test alarm).
+ */
+export async function unlockAudioContext(): Promise<boolean> {
+  const ctx = getAudioContext();
+  if (!ctx) return false;
+  try {
+    if (ctx.state === "suspended") {
+      await Promise.race([
+        ctx.resume(),
+        new Promise((resolve) => setTimeout(resolve, 500)),
+      ]);
+    }
+    return ctx.state === "running";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Play a single penetrating high-volume piezo alarm burst (two-tone beep-beep).
+ * Uses dual-harmonic oscillators with high gain (0.85-0.95) to maximize
+ * audible loudness on mobile speakers without digital clipping.
+ */
+export async function playAlarmBurst(volume: number = 0.9): Promise<void> {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  try {
+    if (ctx.state === "suspended") {
+      await Promise.race([
+        ctx.resume(),
+        new Promise((resolve) => setTimeout(resolve, 500)),
+      ]);
+    }
+
     const now = ctx.currentTime;
+    const masterGain = ctx.createGain();
+    const clampedVol = Math.max(0.1, Math.min(1.0, volume));
+    masterGain.gain.setValueAtTime(clampedVol, now);
+    masterGain.connect(ctx.destination);
+
+    // Beep 1: High piercing transit alert tone (920 Hz + 1150 Hz harmonic)
+    const tones = [
+      { f1: 920, f2: 1150, start: 0, dur: 0.18 },
+      { f1: 1150, f2: 1380, start: 0.24, dur: 0.22 },
+    ];
+
+    tones.forEach(({ f1, f2, start, dur }) => {
+      // Primary carrier tone
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = "triangle";
+      osc1.frequency.setValueAtTime(f1, now + start);
+      gain1.gain.setValueAtTime(0.7, now + start);
+      gain1.gain.exponentialRampToValueAtTime(0.01, now + start + dur);
+      osc1.connect(gain1);
+      gain1.connect(masterGain);
+
+      // Secondary piercing overtone
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = "sine";
+      osc2.frequency.setValueAtTime(f2, now + start);
+      gain2.gain.setValueAtTime(0.4, now + start);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + start + dur);
+      osc2.connect(gain2);
+      gain2.connect(masterGain);
+
+      osc1.start(now + start);
+      osc1.stop(now + start + dur);
+      osc2.start(now + start);
+      osc2.stop(now + start + dur);
+    });
+  } catch (e) {
+    console.warn("Audio alarm burst could not play:", e);
+  }
+}
+
+/**
+ * Start a continuous repeating alarm (audio + vibration pattern)
+ * that rings loudly in repeating bursts until dismissed by the user
+ * or auto-silenced after autoSilenceMs (default: 45s).
+ */
+export function startRepeatingAlarm(options?: {
+  soundEnabled?: boolean | undefined;
+  vibrationEnabled?: boolean | undefined;
+  volume?: number | undefined;
+  autoSilenceMs?: number | undefined;
+  onAutoSilence?: (() => void) | undefined;
+}): { stop: () => void; isRinging: () => boolean } {
+  // If already ringing, stop previous before restarting
+  stopRepeatingAlarm();
+
+  const sound = options?.soundEnabled ?? true;
+  const vibration = options?.vibrationEnabled ?? true;
+  const volume = options?.volume ?? 0.92;
+  const autoSilenceMs = options?.autoSilenceMs ?? 45000;
+  onStopAlarmCallback = options?.onAutoSilence ?? null;
+
+  isAlarmRinging = true;
+
+  // 1. Initial immediate trigger
+  if (sound) playAlarmBurst(volume);
+  if (vibration) triggerVibration([300, 150, 300, 150, 450]);
+
+  // 2. Repeating pattern every 1.3 seconds
+  activeAlarmTimer = setInterval(() => {
+    if (!isAlarmRinging) return;
+    if (sound) playAlarmBurst(volume);
+    if (vibration) triggerVibration([300, 150, 300, 150, 450]);
+  }, 1300);
+
+  // 3. Auto-silence safety timer to protect battery/hearing if user is unresponsive
+  activeAutoSilenceTimer = setTimeout(() => {
+    const cb = onStopAlarmCallback;
+    stopRepeatingAlarm();
+    cb?.();
+  }, autoSilenceMs);
+
+  return {
+    stop: stopRepeatingAlarm,
+    isRinging: () => isAlarmRinging,
+  };
+}
+
+/**
+ * Stop and dismiss any active repeating alarm immediately.
+ * Cancels audio oscillators, haptic vibrations, and timers.
+ */
+export function stopRepeatingAlarm(): void {
+  isAlarmRinging = false;
+  if (activeAlarmTimer) {
+    clearInterval(activeAlarmTimer);
+    activeAlarmTimer = null;
+  }
+  if (activeAutoSilenceTimer) {
+    clearTimeout(activeAutoSilenceTimer);
+    activeAutoSilenceTimer = null;
+  }
+  onStopAlarmCallback = null;
+
+  // Cancel device vibration immediately
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    try {
+      navigator.vibrate(0);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+/**
+ * Check if the repeating alarm is currently ringing.
+ */
+export function isAlarmCurrentlyRinging(): boolean {
+  return isAlarmRinging;
+}
+
+/**
+ * Play standard single melodic or alert chimes (arrival cue, journey start cue, single preview).
+ */
+export async function playAlarmChime(
+  type: "alarm" | "arrival" | "test" = "alarm",
+): Promise<void> {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  try {
+    if (ctx.state === "suspended") {
+      await ctx.resume();
+    }
+
+    const now = ctx.currentTime;
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0.85, now);
+    masterGain.connect(ctx.destination);
 
     if (type === "arrival") {
+      // Pleasant melodic chime: C5 (523Hz) -> E5 (659Hz) -> G5 (784Hz) -> C6 (1046Hz)
       const notes = [523.25, 659.25, 783.99, 1046.5];
       notes.forEach((freq, idx) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = "sine";
         osc.frequency.setValueAtTime(freq, now + idx * 0.12);
-        gain.gain.setValueAtTime(0.3, now + idx * 0.12);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.35);
+        gain.gain.setValueAtTime(0.6, now + idx * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.005, now + idx * 0.12 + 0.38);
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(masterGain);
         osc.start(now + idx * 0.12);
-        osc.stop(now + idx * 0.12 + 0.35);
+        osc.stop(now + idx * 0.12 + 0.38);
       });
     } else {
+      // Dual high-intensity alert chime
       const tones = [
-        { freq: 587.33, start: 0, dur: 0.18 },
-        { freq: 880.0, start: 0.22, dur: 0.3 },
-        { freq: 880.0, start: 0.58, dur: 0.4 },
+        { freq: 880.0, start: 0, dur: 0.18 },
+        { freq: 1175.0, start: 0.22, dur: 0.25 },
+        { freq: 1175.0, start: 0.52, dur: 0.35 },
       ];
       tones.forEach(({ freq, start, dur }) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = "triangle";
         osc.frequency.setValueAtTime(freq, now + start);
-        gain.gain.setValueAtTime(0.35, now + start);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
+        gain.gain.setValueAtTime(0.75, now + start);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + start + dur);
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(masterGain);
         osc.start(now + start);
         osc.stop(now + start + dur);
       });
@@ -706,12 +976,17 @@ export function playAlarmChime(type: "alarm" | "arrival" | "test" = "alarm"): vo
   }
 }
 
-export function triggerVibration(pattern: number[] = [250, 150, 250, 150, 400]): void {
+/**
+ * Trigger device haptic vibration pattern safely.
+ */
+export function triggerVibration(
+  pattern: number[] = [250, 150, 250, 150, 400],
+): void {
   if (typeof navigator !== "undefined" && "vibrate" in navigator) {
     try {
       navigator.vibrate(pattern);
     } catch {
-      // Ignore vibration errors
+      // Ignore vibration errors on unsupported hardware
     }
   }
 }

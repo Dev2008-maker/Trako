@@ -18,17 +18,31 @@ export function AppShell({
   const { user, loading } = useAuth();
 
   return (
-    <div className={bare ? "relative h-[100dvh] w-full overflow-hidden" : "min-h-screen pb-16"}>
+    <div
+      className={
+        bare
+          ? "relative h-[100dvh] w-full overflow-hidden"
+          : "min-h-screen pb-16"
+      }
+    >
       <header className="sticky top-0 z-30 h-[60px] bg-white">
         <div className="mx-auto flex h-full max-w-lg items-center justify-between gap-3 pl-[14px] pr-4">
           <div className="min-w-0">
             {title ? (
               <>
                 <h1 className="truncate text-base font-bold">{title}</h1>
-                {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
+                {subtitle && (
+                  <p className="truncate text-xs text-muted-foreground">
+                    {subtitle}
+                  </p>
+                )}
               </>
             ) : (
-              <Link to="/" className="flex min-w-0 flex-col justify-center" aria-label="TRAKO Home">
+              <Link
+                to="/"
+                className="flex min-w-0 flex-col justify-center"
+                aria-label="TRAKO Home"
+              >
                 <img
                   src="/trako-logo.png"
                   alt="TRAKO"
@@ -60,7 +74,9 @@ export function AppShell({
         </div>
       </header>
 
-      <main className={bare ? "size-full" : "mx-auto max-w-md px-4 py-4"}>{children}</main>
+      <main className={bare ? "size-full" : "mx-auto max-w-md px-4 py-4"}>
+        {children}
+      </main>
       <BottomNavigation />
     </div>
   );

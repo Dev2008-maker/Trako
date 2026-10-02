@@ -1,5 +1,19 @@
-import { transit_realtime } from "gtfs-realtime-bindings";
+import gtfsRealtimePkg from "gtfs-realtime-bindings";
 import { distanceMeters, calculateBearing, type LatLng } from "@/lib/geo";
+
+const transit_realtime =
+  (
+    gtfsRealtimePkg as unknown as {
+      transit_realtime?: typeof import("gtfs-realtime-bindings").transit_realtime;
+    }
+  ).transit_realtime ||
+  (
+    gtfsRealtimePkg as unknown as {
+      default: {
+        transit_realtime: typeof import("gtfs-realtime-bindings").transit_realtime;
+      };
+    }
+  ).default.transit_realtime;
 
 export interface GTFSRealtimeVehicle {
   id: string;
@@ -32,21 +46,30 @@ export interface GTFSRealtimeFeedResult {
  * Users or operators can customize via VITE_PMPML_GTFS_RT_URL in .env.
  */
 const DEFAULT_FEED_URLS = [
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_PMPML_GTFS_RT_URL) || "",
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_GTFS_RT_VEHICLE_POSITIONS_URL) || "",
-  "https://opendata.punecorporation.org/gtfs-rt/vehicle-positions.pb",
-  "https://raw.githubusercontent.com/pmpml-transit/live-feed/main/vehiclePositions.pb",
+  (typeof import.meta !== "undefined" &&
+    import.meta.env?.["VITE_PMPML_GTFS_RT_URL"]) ||
+    "",
+  (typeof import.meta !== "undefined" &&
+    import.meta.env?.["VITE_GTFS_RT_VEHICLE_POSITIONS_URL"]) ||
+    "",
 ].filter(Boolean);
 
 /**
  * Decodes a ProtocolBuffer array buffer into GTFS Realtime FeedMessage entities.
  */
-export function parseGTFSRealtimeProtobuf(buffer: ArrayBuffer | Uint8Array): GTFSRealtimeVehicle[] {
+export function parseGTFSRealtimeProtobuf(
+  buffer: ArrayBuffer | Uint8Array,
+): GTFSRealtimeVehicle[] {
   try {
-    const uint8Array = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    const uint8Array =
+      buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
     const feedMessage = transit_realtime.FeedMessage.decode(uint8Array);
 
-    if (!feedMessage || !feedMessage.entity || feedMessage.entity.length === 0) {
+    if (
+      !feedMessage ||
+      !feedMessage.entity ||
+      feedMessage.entity.length === 0
+    ) {
       return [];
     }
 
@@ -56,7 +79,11 @@ export function parseGTFSRealtimeProtobuf(buffer: ArrayBuffer | Uint8Array): GTF
       if (!entity.vehicle) continue;
       const v = entity.vehicle;
       const pos = v.position;
-      if (!pos || typeof pos.latitude !== "number" || typeof pos.longitude !== "number") {
+      if (
+        !pos ||
+        typeof pos.latitude !== "number" ||
+        typeof pos.longitude !== "number"
+      ) {
         continue;
       }
 
@@ -69,16 +96,22 @@ export function parseGTFSRealtimeProtobuf(buffer: ArrayBuffer | Uint8Array): GTF
       }
 
       const vehicleId =
-        v.vehicle?.id || entity.id || `veh-${Math.random().toString(36).slice(2, 8)}`;
+        v.vehicle?.id ||
+        entity.id ||
+        `veh-${Math.random().toString(36).slice(2, 8)}`;
       const routeId = v.trip?.routeId || "";
       const tripId = v.trip?.tripId || null;
-      const label = v.vehicle?.label || v.vehicle?.licensePlate || routeId || "PMPML";
+      const label =
+        v.vehicle?.label || v.vehicle?.licensePlate || routeId || "PMPML";
       const licensePlate = v.vehicle?.licensePlate || "";
       const bearing = typeof pos.bearing === "number" ? pos.bearing : 0;
       // pos.speed is usually in meters/second in GTFS-RT; convert to km/h
-      const speedKmh = typeof pos.speed === "number" ? Math.round(pos.speed * 3.6) : 0;
+      const speedKmh =
+        typeof pos.speed === "number" ? Math.round(pos.speed * 3.6) : 0;
       const timestampSec =
-        typeof v.timestamp === "number" ? v.timestamp : Math.floor(Date.now() / 1000);
+        typeof v.timestamp === "number"
+          ? v.timestamp
+          : Math.floor(Date.now() / 1000);
       const timestampMs = timestampSec * 1000;
 
       let statusStr = "IN_TRANSIT";
@@ -133,6 +166,15 @@ export async function fetchGTFSRealtimeVehicles(
   customUrl?: string,
 ): Promise<GTFSRealtimeFeedResult> {
   const urlsToTry = customUrl ? [customUrl] : DEFAULT_FEED_URLS;
+  if (urlsToTry.length === 0) {
+    return {
+      success: false,
+      isLive: false,
+      vehicles: [],
+      feedTimestamp: Date.now(),
+      error: "No GTFS-RT endpoint configured; using Demo Mode.",
+    };
+  }
 
   for (const url of urlsToTry) {
     if (!url) continue;
@@ -140,7 +182,8 @@ export async function fetchGTFSRealtimeVehicles(
       const response = await fetch(url, {
         method: "GET",
         headers: {
-          Accept: "application/x-protobuf, application/octet-stream, application/json, */*",
+          Accept:
+            "application/x-protobuf, application/octet-stream, application/json, */*",
         },
         signal: AbortSignal.timeout(6000),
       });
@@ -159,12 +202,18 @@ export async function fetchGTFSRealtimeVehicles(
             const v = ent.vehicle;
             if (!v?.position?.latitude) continue;
             vehicles.push({
-              id: ent.id || v.vehicle?.id || `veh-${Math.random().toString(36).slice(2, 6)}`,
+              id:
+                ent.id ||
+                v.vehicle?.id ||
+                `veh-${Math.random().toString(36).slice(2, 6)}`,
               vehicleId: v.vehicle?.id || ent.id,
               label: v.vehicle?.label || "PMPML",
               licensePlate: v.vehicle?.licensePlate || "",
               routeId: String(v.trip?.routeId || ""),
-              routeNo: extractRouteNumber(String(v.trip?.routeId || ""), v.vehicle?.label),
+              routeNo: extractRouteNumber(
+                String(v.trip?.routeId || ""),
+                v.vehicle?.label,
+              ),
               tripId: v.trip?.tripId ? String(v.trip.tripId) : null,
               lat: v.position.latitude,
               lon: v.position.longitude,
@@ -173,7 +222,9 @@ export async function fetchGTFSRealtimeVehicles(
               timestamp: v.timestamp ? v.timestamp * 1000 : Date.now(),
               currentStatus: v.currentStatus || "IN_TRANSIT",
               stopId: v.stopId ? String(v.stopId) : null,
-              occupancyStatus: v.occupancyStatus ? String(v.occupancyStatus) : null,
+              occupancyStatus: v.occupancyStatus
+                ? String(v.occupancyStatus)
+                : null,
             });
           }
           if (vehicles.length > 0) {
@@ -210,7 +261,8 @@ export async function fetchGTFSRealtimeVehicles(
     isLive: false,
     vehicles: [],
     feedTimestamp: Date.now(),
-    error: "PMPML live GTFS-RT feed currently unreachable, activating Demo Mode.",
+    error:
+      "PMPML live GTFS-RT feed currently unreachable, activating Demo Mode.",
   };
 }
 
@@ -226,24 +278,33 @@ export function matchVehicleToRoute(
   if (!vehicles || vehicles.length === 0) return null;
 
   const targetRouteId = routeId.trim().toLowerCase();
-  const targetRouteNo = (routeNo || extractRouteNumber(routeId)).trim().toLowerCase();
+  const targetRouteNo = (routeNo || extractRouteNumber(routeId))
+    .trim()
+    .toLowerCase();
   const targetTripId = tripId?.trim().toLowerCase();
 
   // 1. Exact tripId match
   if (targetTripId) {
-    const tripMatch = vehicles.find((v) => v.tripId && v.tripId.toLowerCase() === targetTripId);
+    const tripMatch = vehicles.find(
+      (v) => v.tripId && v.tripId.toLowerCase() === targetTripId,
+    );
     if (tripMatch) return tripMatch;
   }
 
   // 2. Exact routeId match
-  const routeMatch = vehicles.find((v) => v.routeId && v.routeId.toLowerCase() === targetRouteId);
+  const routeMatch = vehicles.find(
+    (v) => v.routeId && v.routeId.toLowerCase() === targetRouteId,
+  );
   if (routeMatch) return routeMatch;
 
   // 3. Match normalized route number
   const routeNoMatch = vehicles.find((v) => {
     if (!v.routeNo && !v.routeId) return false;
     const vNo = (v.routeNo || extractRouteNumber(v.routeId)).toLowerCase();
-    return vNo === targetRouteNo || v.routeId.toLowerCase() === `route_${targetRouteNo}`;
+    return (
+      vNo === targetRouteNo ||
+      v.routeId.toLowerCase() === `route_${targetRouteNo}`
+    );
   });
   if (routeNoMatch) return routeNoMatch;
 

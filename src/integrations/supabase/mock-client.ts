@@ -17,15 +17,78 @@ export const MOCK_STOPS = [
     lat: 18.5308,
     lon: 73.8478,
   },
-  { id: "s3", code: "DECC", name: "Deccan Gymkhana", area: "Deccan", lat: 18.5157, lon: 73.8415 },
-  { id: "s4", code: "SWRG", name: "Swargate", area: "Swargate", lat: 18.501, lon: 73.8586 },
-  { id: "s5", code: "MKTY", name: "Market Yard", area: "Gultekdi", lat: 18.4874, lon: 73.8695 },
-  { id: "s6", code: "KTRJ", name: "Katraj Depot", area: "Katraj", lat: 18.4529, lon: 73.8578 },
-  { id: "s7", code: "KOTH", name: "Kothrud Depot", area: "Kothrud", lat: 18.5074, lon: 73.8077 },
-  { id: "s8", code: "KRVN", name: "Karve Nagar", area: "Karve Nagar", lat: 18.4926, lon: 73.8177 },
-  { id: "s9", code: "WRJE", name: "Warje Bridge", area: "Warje", lat: 18.4842, lon: 73.7987 },
-  { id: "s10", code: "PUNE", name: "Pune Station", area: "Pune Camp", lat: 18.5286, lon: 73.8743 },
-  { id: "s11", code: "MGRD", name: "MG Road Camp", area: "Camp", lat: 18.5147, lon: 73.8786 },
+  {
+    id: "s3",
+    code: "DECC",
+    name: "Deccan Gymkhana",
+    area: "Deccan",
+    lat: 18.5157,
+    lon: 73.8415,
+  },
+  {
+    id: "s4",
+    code: "SWRG",
+    name: "Swargate",
+    area: "Swargate",
+    lat: 18.501,
+    lon: 73.8586,
+  },
+  {
+    id: "s5",
+    code: "MKTY",
+    name: "Market Yard",
+    area: "Gultekdi",
+    lat: 18.4874,
+    lon: 73.8695,
+  },
+  {
+    id: "s6",
+    code: "KTRJ",
+    name: "Katraj Depot",
+    area: "Katraj",
+    lat: 18.4529,
+    lon: 73.8578,
+  },
+  {
+    id: "s7",
+    code: "KOTH",
+    name: "Kothrud Depot",
+    area: "Kothrud",
+    lat: 18.5074,
+    lon: 73.8077,
+  },
+  {
+    id: "s8",
+    code: "KRVN",
+    name: "Karve Nagar",
+    area: "Karve Nagar",
+    lat: 18.4926,
+    lon: 73.8177,
+  },
+  {
+    id: "s9",
+    code: "WRJE",
+    name: "Warje Bridge",
+    area: "Warje",
+    lat: 18.4842,
+    lon: 73.7987,
+  },
+  {
+    id: "s10",
+    code: "PUNE",
+    name: "Pune Station",
+    area: "Pune Camp",
+    lat: 18.5286,
+    lon: 73.8743,
+  },
+  {
+    id: "s11",
+    code: "MGRD",
+    name: "MG Road Camp",
+    area: "Camp",
+    lat: 18.5147,
+    lon: 73.8786,
+  },
   {
     id: "s12",
     code: "HDPR",
@@ -34,10 +97,38 @@ export const MOCK_STOPS = [
     lat: 18.5089,
     lon: 73.926,
   },
-  { id: "s13", code: "MGRP", name: "Magarpatta City", area: "Hadapsar", lat: 18.5158, lon: 73.927 },
-  { id: "s14", code: "VMAN", name: "Viman Nagar", area: "Viman Nagar", lat: 18.5679, lon: 73.9143 },
-  { id: "s15", code: "YRWD", name: "Yerawada", area: "Yerawada", lat: 18.551, lon: 73.88 },
-  { id: "s16", code: "AUND", name: "Aundh Gaon", area: "Aundh", lat: 18.559, lon: 73.807 },
+  {
+    id: "s13",
+    code: "MGRP",
+    name: "Magarpatta City",
+    area: "Hadapsar",
+    lat: 18.5158,
+    lon: 73.927,
+  },
+  {
+    id: "s14",
+    code: "VMAN",
+    name: "Viman Nagar",
+    area: "Viman Nagar",
+    lat: 18.5679,
+    lon: 73.9143,
+  },
+  {
+    id: "s15",
+    code: "YRWD",
+    name: "Yerawada",
+    area: "Yerawada",
+    lat: 18.551,
+    lon: 73.88,
+  },
+  {
+    id: "s16",
+    code: "AUND",
+    name: "Aundh Gaon",
+    area: "Aundh",
+    lat: 18.559,
+    lon: 73.807,
+  },
   {
     id: "s17",
     code: "UNIV",
@@ -54,8 +145,22 @@ export const MOCK_STOPS = [
     lat: 18.5983,
     lon: 73.7125,
   },
-  { id: "s19", code: "BANR", name: "Baner Road", area: "Baner", lat: 18.559, lon: 73.7868 },
-  { id: "s20", code: "NGDW", name: "Nigdi Bhakti Shakti", area: "Nigdi", lat: 18.655, lon: 73.761 },
+  {
+    id: "s19",
+    code: "BANR",
+    name: "Baner Road",
+    area: "Baner",
+    lat: 18.559,
+    lon: 73.7868,
+  },
+  {
+    id: "s20",
+    code: "NGDW",
+    name: "Nigdi Bhakti Shakti",
+    area: "Nigdi",
+    lat: 18.655,
+    lon: 73.761,
+  },
 ];
 
 export const MOCK_ROUTES = [
@@ -134,7 +239,9 @@ for (const [routeId, stopIds] of Object.entries(ROUTE_STOP_MAP)) {
 }
 
 function getUpcomingStopTimes(stopId: string) {
-  const serving = MOCK_ROUTE_STOPS.filter((rs) => rs.stop_id === stopId && rs.direction === 0);
+  const serving = MOCK_ROUTE_STOPS.filter(
+    (rs) => rs.stop_id === stopId && rs.direction === 0,
+  );
   const now = new Date();
   const currentHour = now.getHours();
   const currentMin = now.getMinutes();
@@ -183,7 +290,10 @@ export function createMockSupabaseClient() {
         };
       },
       async signInWithPassword() {
-        return { data: { user: null, session: null }, error: new Error("Mock auth mode") };
+        return {
+          data: { user: null, session: null },
+          error: new Error("Mock auth mode"),
+        };
       },
       async signOut() {
         return { error: null };
@@ -203,6 +313,16 @@ export function createMockSupabaseClient() {
       };
     },
     removeChannel(_channel: unknown) {},
+    rpc(_fnName: string, _args?: unknown) {
+      return Promise.resolve({
+        data: {
+          result: "joined",
+          group_id: "mock-group",
+          group_name: "Mock Group",
+        },
+        error: null,
+      });
+    },
     from(table: string) {
       type MockRecord = Record<string, unknown>;
       let filterFn = (items: MockRecord[]) => items;
@@ -210,7 +330,7 @@ export function createMockSupabaseClient() {
       let limitCount: number | null = null;
 
       const builder = {
-        select(_fields?: string) {
+        select(_fields?: string, _opts?: unknown) {
           return builder;
         },
         order(field: string, opts?: { ascending?: boolean }) {
@@ -227,13 +347,18 @@ export function createMockSupabaseClient() {
         },
         eq(field: string, val: unknown) {
           const prev = filterFn;
-          filterFn = (items: MockRecord[]) => prev(items).filter((it) => it[field] === val);
+          filterFn = (items: MockRecord[]) =>
+            prev(items).filter((it) => it[field] === val);
           return builder;
         },
         in(field: string, values: unknown[]) {
           const prev = filterFn;
           const set = new Set(values);
-          filterFn = (items: MockRecord[]) => prev(items).filter((it) => set.has(it[field]));
+          filterFn = (items: MockRecord[]) =>
+            prev(items).filter((it) => set.has(it[field]));
+          return builder;
+        },
+        is(_field: string, _val: unknown) {
           return builder;
         },
         gte(_field: string, _val: unknown) {
@@ -242,6 +367,60 @@ export function createMockSupabaseClient() {
         limit(n: number) {
           limitCount = n;
           return builder;
+        },
+        single() {
+          return {
+            then(resolve: (res: { data: unknown; error: null }) => void) {
+              builder.then((res) => {
+                const item = Array.isArray(res.data)
+                  ? (res.data[0] ?? null)
+                  : null;
+                resolve({ data: item, error: null });
+              });
+            },
+          };
+        },
+        insert(payload: unknown) {
+          return {
+            select() {
+              return {
+                single() {
+                  const item = (
+                    Array.isArray(payload) ? payload[0] : payload
+                  ) as Record<string, unknown> | null;
+                  return Promise.resolve({
+                    data: item
+                      ? { id: "mock-" + Date.now(), ...item }
+                      : { id: "mock-" + Date.now() },
+                    error: null,
+                  });
+                },
+                then(resolve: (res: { data: unknown; error: null }) => void) {
+                  resolve({
+                    data: Array.isArray(payload) ? payload : [payload],
+                    error: null,
+                  });
+                },
+              };
+            },
+            then(resolve: (res: { data: unknown; error: null }) => void) {
+              resolve({ data: payload, error: null });
+            },
+          };
+        },
+        update(payload: unknown) {
+          const chain = {
+            eq(_f: string, _v: unknown) {
+              return chain;
+            },
+            is(_f: string, _v: unknown) {
+              return chain;
+            },
+            then(resolve: (res: { data: unknown; error: null }) => void) {
+              resolve({ data: payload, error: null });
+            },
+          };
+          return chain;
         },
         then(resolve: (res: { data: unknown; error: null }) => void) {
           let data: MockRecord[] = [];
@@ -319,5 +498,7 @@ export function createMockSupabaseClient() {
 
       return builder;
     },
-  } as unknown as ReturnType<typeof import("@supabase/supabase-js").createClient<Database>>;
+  } as unknown as ReturnType<
+    typeof import("@supabase/supabase-js").createClient<Database>
+  >;
 }

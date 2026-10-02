@@ -1,0 +1,27 @@
+{
+  "short_name": "TRAKO",
+  "name": "TRAKO — Pune Transit",
+  "description": "Know your bus. Know your stop.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    },
+    {
+      "src": "/trako-icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "type": "image/png",
+      "sizes": "180x180"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#800080",
+  "theme_color": "#800080",
+  "display": "standalone",
+  "orientation": "portrait"
+}

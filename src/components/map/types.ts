@@ -1,5 +1,6 @@
 import type { Stop } from "@/lib/transit";
 import type { LatLng } from "@/lib/geo";
+import type { MetroLine, MetroStation } from "@/data/metro/types";
 
 export type BusMarkerData = {
   id: string;
@@ -12,28 +13,36 @@ export type BusMarkerData = {
 };
 
 export type MapViewProps = {
-  center?: LatLng | null;
-  user?: LatLng | null;
-  stops?: Stop[];
-  selectedStopId?: string | null;
-  destination?: (LatLng & { name: string }) | null;
-  buses?: BusMarkerData[];
-  line?: [number, number][];
-  completedLine?: [number, number][];
-  lineColor?: string;
-  completedLineColor?: string;
-  trafficSegments?: Array<{ coordinates: [number, number][]; color: string }>;
-  boardingStopId?: string | null;
-  destinationStopId?: string | null;
-  showIntermediateStops?: boolean;
-  fitBounds?: boolean;
-  fitBoundsKey?: number | string;
-  hideControls?: boolean;
-  onStopClick?: (stopId: string) => void;
-  className?: string;
-  isDemoMode?: boolean;
-  onToggleDemoMode?: () => void;
-  pickupPointLabel?: string;
-  followBus?: boolean;
-  onToggleFollowBus?: () => void;
+  center?: LatLng | null | undefined;
+  user?: LatLng | null | undefined;
+  stops?: Stop[] | undefined;
+  selectedStopId?: string | null | undefined;
+  destination?: (LatLng & { name: string }) | null | undefined;
+  buses?: BusMarkerData[] | undefined;
+  line?: [number, number][] | undefined;
+  completedLine?: [number, number][] | undefined;
+  lineColor?: string | undefined;
+  completedLineColor?: string | undefined;
+  trafficSegments?:
+    Array<{ coordinates: [number, number][]; color: string }> | undefined;
+  boardingStopId?: string | null | undefined;
+  destinationStopId?: string | null | undefined;
+  showIntermediateStops?: boolean | undefined;
+  fitBounds?: boolean | undefined;
+  fitBoundsKey?: number | string | undefined;
+  hideControls?: boolean | undefined;
+  onStopClick?: ((stopId: string) => void) | undefined;
+  className?: string | undefined;
+  isDemoMode?: boolean | undefined;
+  onToggleDemoMode?: (() => void) | undefined;
+  pickupPointLabel?: string | undefined;
+  followBus?: boolean | undefined;
+  onToggleFollowBus?: (() => void) | undefined;
+  // Metro Integration Props
+  metroStations?: MetroStation[] | undefined;
+  metroLines?: MetroLine[] | undefined;
+  selectedMetroStationId?: string | null | undefined;
+  onMetroStationClick?: ((stationId: string) => void) | undefined;
+  showMetroLines?: boolean | undefined;
+  showMetroStations?: boolean | undefined;
 };

@@ -29,12 +29,18 @@ import {
   VolumeX,
   X,
   Zap,
+  LogIn,
+  LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { SavedJourneysCard } from "@/components/home/SavedJourneysCard";
 import { Switch } from "@/components/ui/switch";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import {
   clearNotifications,
+  clearRecentJourneys,
   clearSearchHistory,
   getAlarmPreferences,
   getFavouriteStops,
@@ -44,9 +50,12 @@ import {
   markNotificationRead,
   playAlarmChime,
   saveAlarmPreferences,
+  startRepeatingAlarm,
+  stopRepeatingAlarm,
   toggleFavouriteStop,
   toggleSavedRoute,
   triggerVibration,
+  unlockAudioContext,
   type AlarmPreferences,
   type FavouriteStopItem,
   type JourneyState,
@@ -58,13 +67,13 @@ import { formatDistance } from "@/lib/geo";
 export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
-      { title: "Passenger Profile & Settings — Trako" },
+      { title: "Passenger Profile & Settings — TRAKO" },
       {
         name: "description",
         content:
           "Manage auto stop alarms, saved Pune bus routes, favourite stops, and transit notifications.",
       },
-      { property: "og:title", content: "Passenger Profile & Settings — Trako" },
+      { property: "og:title", content: "Passenger Profile & Settings — TRAKO" },
       {
         property: "og:description",
         content:
@@ -78,13 +87,26 @@ export const Route = createFileRoute("/profile")({
 });
 
 function ProfilePage() {
-  const [prefs, setPrefs] = useState<AlarmPreferences>(() => getAlarmPreferences());
+  const { user } = useAuth();
+  const [prefs, setPrefs] = useState<AlarmPreferences>(() =>
+    getAlarmPreferences(),
+  );
   const [savedRoutes, setSavedRoutes] = useState<SavedRouteItem[]>([]);
   const [favouriteStops, setFavouriteStops] = useState<FavouriteStopItem[]>([]);
   const [recentTrips, setRecentTrips] = useState<JourneyState[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [commuterType, setCommuterType] = useState<"student" | "daily" | "pass_holder">("student");
-  const [activeTab, setActiveTab] = useState<"settings" | "notifications" | "history">("settings");
+  const [commuterType, setCommuterType] = useState<
+    "student" | "daily" | "pass_holder"
+  >("student");
+  const [activeTab, setActiveTab] = useState<
+    "settings" | "notifications" | "history"
+  >("settings");
+  const [alarmTested, setAlarmTested] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<string>(() => {
+    return typeof window !== "undefined" && "Notification" in window
+      ? Notification.permission
+      : "unsupported";
+  });
 
   useEffect(() => {
     setSavedRoutes(getSavedRoutesDetailed());
@@ -97,10 +119,66 @@ function ProfilePage() {
     saveAlarmPreferences(prefs);
   }, [prefs]);
 
+  // Clean up alarm sound if user navigates away while testing
+  useEffect(() => {
+    return () => {
+      stopRepeatingAlarm();
+    };
+  }, []);
+
   function handleTestAlarm() {
-    if (prefs.soundEnabled) playAlarmChime("alarm");
-    if (prefs.vibrationEnabled) triggerVibration([250, 150, 250, 150, 400]);
-    toast.success("Test alarm triggered! Sound chime & haptic vibration played.");
+    if (alarmTested) {
+      stopRepeatingAlarm();
+      setAlarmTested(false);
+      toast.info("Alarm test stopped.");
+      return;
+    }
+
+    setAlarmTested(true);
+    unlockAudioContext().catch(() => {});
+    startRepeatingAlarm({
+      soundEnabled: prefs.soundEnabled,
+      vibrationEnabled: prefs.vibrationEnabled,
+      autoSilenceMs: 8000,
+      onAutoSilence: () => {
+        setAlarmTested(false);
+      },
+    });
+    toast.success(
+      "Testing Alarm! Sound & vibration active (rings for 8s or tap Stop).",
+      {
+        duration: 5000,
+      },
+    );
+  }
+
+  async function handleRequestNotifPermission() {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      toast.info("Notifications are not supported in this browser.");
+      return;
+    }
+    try {
+      const res = await Notification.requestPermission();
+      setNotifPermission(res);
+      if (res === "granted") {
+        toast.success("Browser stop notifications enabled!");
+      } else {
+        toast.info("Notification permission was not granted.");
+      }
+    } catch {
+      toast.error("Failed to request notification permission.");
+    }
+  }
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    toast.info("Signed out of TRAKO.");
+  }
+
+  function handleClearHistory() {
+    clearRecentJourneys();
+    setRecentTrips([]);
+    toast.info("Travel history cleared.");
   }
 
   function handleRemoveSavedRoute(route: SavedRouteItem) {
@@ -137,28 +215,55 @@ function ProfilePage() {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <AppShell title="Profile & Settings" subtitle="Passenger preferences, alarms & saved transit">
+    <AppShell
+      title="Profile & Settings"
+      subtitle="Passenger preferences, alarms & saved transit"
+    >
       <div className="space-y-4 pb-16">
         {/* ========================================================================= */}
         {/* 1. PASSENGER IDENTITY CARD                                               */}
         {/* ========================================================================= */}
         <div className="trako-card p-4 border border-border bg-gradient-to-br from-white via-white to-purple-50/60 space-y-3">
           <div className="flex items-center gap-3.5">
-            <div className="grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-[#800080] to-[#5a005a] text-white font-display text-xl font-black shadow-md ring-4 ring-primary/10">
+            <div className="grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-[#800080] to-[#5a005a] text-white font-display text-xl font-black shadow-md ring-4 ring-primary/10 shrink-0">
               <User className="size-7" />
             </div>
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-extrabold text-foreground">Pune Commuter</h2>
-                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700 border border-emerald-200">
-                  Verified Rider
+                <h2 className="text-base font-extrabold text-foreground truncate">
+                  {user ? (user.email ?? "Pune Commuter") : "Pune Commuter"}
+                </h2>
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700 border border-emerald-200 shrink-0">
+                  {user ? "Verified Rider" : "Guest Mode"}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                PMPML Pune & PCMC Transit • Trako App
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                {user
+                  ? "Supabase Authenticated • TRAKO App"
+                  : "PMPML Pune & PCMC Transit • Guest Rider"}
               </p>
             </div>
+
+            {user ? (
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="inline-flex items-center gap-1 rounded-xl border border-input bg-card px-2.5 py-1.5 text-xs font-bold text-destructive hover:bg-destructive/10 transition shadow-2xs shrink-0"
+                title="Sign out"
+              >
+                <LogOut className="size-3.5" />
+                <span className="hidden sm:inline">Sign Out</span>
+              </button>
+            ) : (
+              <Link
+                to="/auth"
+                className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-white hover:opacity-90 transition shadow-2xs shrink-0"
+              >
+                <LogIn className="size-3.5" />
+                <span>Sign In</span>
+              </Link>
+            )}
           </div>
 
           {/* Commuter Type Selector */}
@@ -263,13 +368,25 @@ function ProfilePage() {
                   </h3>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleTestAlarm}
-                  className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20 transition active:scale-95"
-                >
-                  Test Alarm 🔔
-                </button>
+                <div className="flex items-center gap-2">
+                  {alarmTested ? (
+                    <button
+                      type="button"
+                      onClick={handleTestAlarm}
+                      className="rounded-lg bg-rose-600 text-white px-2.5 py-1 text-xs font-bold hover:bg-rose-700 transition active:scale-95 shadow-xs flex items-center gap-1 animate-pulse"
+                    >
+                      <span>Stop Test ⏹️</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleTestAlarm}
+                      className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20 transition active:scale-95 flex items-center gap-1"
+                    >
+                      <span>Test Alarm 🔔</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="divide-y divide-border">
@@ -277,7 +394,8 @@ function ProfilePage() {
                 <div className="flex items-center justify-between py-3">
                   <div className="space-y-0.5">
                     <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                      <Volume2 className="size-3.5 text-primary" /> Sound Chime Tone
+                      <Volume2 className="size-3.5 text-primary" /> Sound Chime
+                      Tone
                     </p>
                     <p className="text-[11px] text-muted-foreground">
                       Play melodic audio tone when approaching your destination
@@ -285,7 +403,9 @@ function ProfilePage() {
                   </div>
                   <Switch
                     checked={prefs.soundEnabled}
-                    onCheckedChange={(val) => setPrefs((p) => ({ ...p, soundEnabled: val }))}
+                    onCheckedChange={(val) =>
+                      setPrefs((p) => ({ ...p, soundEnabled: val }))
+                    }
                   />
                 </div>
 
@@ -293,7 +413,8 @@ function ProfilePage() {
                 <div className="flex items-center justify-between py-3">
                   <div className="space-y-0.5">
                     <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                      <Smartphone className="size-3.5 text-primary" /> Device Vibration
+                      <Smartphone className="size-3.5 text-primary" /> Device
+                      Vibration
                     </p>
                     <p className="text-[11px] text-muted-foreground">
                       Haptic pulse alert before your stop
@@ -301,18 +422,56 @@ function ProfilePage() {
                   </div>
                   <Switch
                     checked={prefs.vibrationEnabled}
-                    onCheckedChange={(val) => setPrefs((p) => ({ ...p, vibrationEnabled: val }))}
+                    onCheckedChange={(val) =>
+                      setPrefs((p) => ({ ...p, vibrationEnabled: val }))
+                    }
                   />
+                </div>
+
+                {/* Browser Push Notification Permission Toggle */}
+                <div className="flex items-center justify-between py-3">
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <Bell className="size-3.5 text-primary" /> Browser Push
+                      Alerts
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {notifPermission === "granted"
+                        ? "Active: System alerts will trigger when approaching your stop"
+                        : notifPermission === "denied"
+                          ? "Blocked: Enable in browser site settings"
+                          : "Allow system notifications for stop alerts"}
+                    </p>
+                  </div>
+                  {notifPermission !== "granted" ? (
+                    <button
+                      type="button"
+                      onClick={handleRequestNotifPermission}
+                      className="rounded-lg bg-primary px-2.5 py-1 text-[11px] font-bold text-white hover:opacity-90 transition"
+                    >
+                      Enable
+                    </button>
+                  ) : (
+                    <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
+                      <Check className="size-3.5" /> Enabled
+                    </span>
+                  )}
                 </div>
 
                 {/* Alarm Trigger Presets */}
                 <div className="py-3">
-                  <p className="text-xs font-bold text-foreground mb-2">Default Alarm Trigger</p>
+                  <p className="text-xs font-bold text-foreground mb-2">
+                    Default Alarm Trigger
+                  </p>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() =>
-                        setPrefs((p) => ({ ...p, stopsAhead: 2, triggerMode: "2_stops" }))
+                        setPrefs((p) => ({
+                          ...p,
+                          stopsAhead: 2,
+                          triggerMode: "2_stops",
+                        }))
                       }
                       className={`rounded-xl border p-3 text-left transition ${
                         prefs.stopsAhead === 2
@@ -329,7 +488,11 @@ function ProfilePage() {
                     <button
                       type="button"
                       onClick={() =>
-                        setPrefs((p) => ({ ...p, stopsAhead: 1, triggerMode: "1_stop" }))
+                        setPrefs((p) => ({
+                          ...p,
+                          stopsAhead: 1,
+                          triggerMode: "1_stop",
+                        }))
                       }
                       className={`rounded-xl border p-3 text-left transition ${
                         prefs.stopsAhead === 1
@@ -342,6 +505,21 @@ function ProfilePage() {
                         Quick alert (~2-3 min)
                       </p>
                     </button>
+                  </div>
+                </div>
+
+                {/* Technical clarification notice on background audio / closed app */}
+                <div className="pt-3">
+                  <div className="flex items-start gap-2 rounded-xl bg-amber-50/70 border border-amber-200/70 p-2.5 text-[11px] text-amber-900">
+                    <Info className="size-4 shrink-0 text-amber-600 mt-0.5" />
+                    <p className="leading-relaxed">
+                      <strong>How Stop Alarms work:</strong> Audio alarms and
+                      device vibrations trigger while TRAKO is active in your
+                      browser or background tab. Background push alerts require
+                      browser notification permissions. If your browser
+                      application is completely terminated, web alarms cannot
+                      wake the device.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -357,10 +535,12 @@ function ProfilePage() {
               </div>
 
               <div className="rounded-xl bg-tint p-3 text-xs space-y-1">
-                <p className="font-bold text-foreground">GTFS Realtime Timetable Mode</p>
+                <p className="font-bold text-foreground">
+                  GTFS Realtime Timetable Mode
+                </p>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Real transit calculations powered by official PMPML GTFS schedules and Google
-                  Routes API live traffic integration.
+                  Real transit calculations powered by official PMPML GTFS
+                  schedules and Google Routes API live traffic integration.
                 </p>
               </div>
 
@@ -395,9 +575,12 @@ function ProfilePage() {
             {notifications.length === 0 ? (
               <div className="trako-card p-6 text-center text-xs text-muted-foreground border border-border space-y-1">
                 <Bell className="mx-auto size-8 text-muted-foreground/60 mb-2" />
-                <p className="font-bold text-foreground">No new notifications</p>
+                <p className="font-bold text-foreground">
+                  No new notifications
+                </p>
                 <p className="text-[11px]">
-                  You will receive alerts here for bus arrivals, journey alarms, and trips.
+                  You will receive alerts here for bus arrivals, journey alarms,
+                  and trips.
                 </p>
               </div>
             ) : (
@@ -462,6 +645,9 @@ function ProfilePage() {
         {/* ========================================================================= */}
         {activeTab === "history" && (
           <div className="space-y-4">
+            {/* Personalized Saved Journeys (Home, College, Work, Gym, Custom) */}
+            <SavedJourneysCard />
+
             {/* Saved Routes List */}
             <section className="space-y-2">
               <div className="flex items-center justify-between">
@@ -469,7 +655,10 @@ function ProfilePage() {
                   <Bookmark className="size-3.5 text-primary" />
                   Saved Routes ({savedRoutes.length})
                 </h3>
-                <Link to="/routes" className="text-[11px] font-bold text-primary">
+                <Link
+                  to="/routes"
+                  className="text-[11px] font-bold text-primary"
+                >
                   Find Routes
                 </Link>
               </div>
@@ -485,7 +674,9 @@ function ProfilePage() {
                         {r.route_no}
                       </span>
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-foreground truncate">{r.route_name}</p>
+                        <p className="text-xs font-bold text-foreground truncate">
+                          {r.route_name}
+                        </p>
                         <p className="text-[10px] text-muted-foreground truncate">
                           {r.origin_stop} ➔ {r.destination_stop}
                         </p>
@@ -521,7 +712,10 @@ function ProfilePage() {
                   <Star className="size-3.5 fill-amber-400 text-amber-500" />
                   Favourite Stops ({favouriteStops.length})
                 </h3>
-                <Link to="/nearby" className="text-[11px] font-bold text-primary">
+                <Link
+                  to="/nearby"
+                  className="text-[11px] font-bold text-primary"
+                >
                   Nearby Map
                 </Link>
               </div>
@@ -533,9 +727,13 @@ function ProfilePage() {
                     className="trako-card p-2.5 flex items-center justify-between gap-1.5 border border-border"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-foreground truncate">{fav.name}</p>
+                      <p className="text-xs font-bold text-foreground truncate">
+                        {fav.name}
+                      </p>
                       {fav.area && (
-                        <p className="text-[10px] text-muted-foreground truncate">{fav.area}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          {fav.area}
+                        </p>
                       )}
                     </div>
 
@@ -553,10 +751,21 @@ function ProfilePage() {
 
             {/* Recent Completed Trips Summary */}
             <section className="space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                <CheckCircle2 className="size-3.5 text-emerald-600" />
-                Travel History ({recentTrips.length})
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  <CheckCircle2 className="size-3.5 text-emerald-600" />
+                  Travel History ({recentTrips.length})
+                </h3>
+                {recentTrips.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearHistory}
+                    className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-destructive transition"
+                  >
+                    <Trash2 className="size-3" /> Clear History
+                  </button>
+                )}
+              </div>
 
               <div className="space-y-2">
                 {recentTrips.slice(0, 4).map((trip) => (
@@ -570,7 +779,8 @@ function ProfilePage() {
                         {trip.destination_stop.name}
                       </p>
                       <p className="text-[10px] text-muted-foreground">
-                        {Math.round(trip.duration_seconds / 60)} mins • {trip.fare_paid ?? "₹20"}
+                        {Math.round(trip.duration_seconds / 60)} mins •{" "}
+                        {trip.fare_paid ?? "₹20"}
                       </p>
                     </div>
 

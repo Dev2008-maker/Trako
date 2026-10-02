@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { LatLng } from "@/lib/geo";
 
-export type LocationStatus = "idle" | "locating" | "granted" | "denied" | "unavailable" | "error";
+export type LocationStatus =
+  "idle" | "locating" | "granted" | "denied" | "unavailable" | "error";
 
 /**
  * Reads the passenger's current location for map + nearest-stop purposes.
@@ -21,13 +22,19 @@ export function useCurrentLocation(auto = true) {
     setStatus((prev) => (prev === "granted" ? prev : "locating"));
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setCoords({ lat: position.coords.latitude, lon: position.coords.longitude });
+        setCoords({
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+        });
         setAccuracy(position.coords.accuracy);
         setStatus("granted");
         if (watchId.current === null) {
           watchId.current = navigator.geolocation.watchPosition(
             (next) => {
-              setCoords({ lat: next.coords.latitude, lon: next.coords.longitude });
+              setCoords({
+                lat: next.coords.latitude,
+                lon: next.coords.longitude,
+              });
               setAccuracy(next.coords.accuracy);
             },
             () => undefined,

@@ -187,9 +187,11 @@ export async function fetchLiveTrafficETA(
   }
 
   const apiKey =
-    (typeof import.meta !== "undefined" && import.meta.env?.VITE_GOOGLE_MAPS_API_KEY) ||
+    (typeof import.meta !== "undefined" &&
+      import.meta.env?.["VITE_GOOGLE_MAPS_API_KEY"]) ||
     (typeof process !== "undefined" &&
-      (process.env?.VITE_GOOGLE_MAPS_API_KEY || process.env?.GOOGLE_MAPS_API_KEY)) ||
+      (process.env?.["VITE_GOOGLE_MAPS_API_KEY"] ||
+        process.env?.["GOOGLE_MAPS_API_KEY"])) ||
     "AIzaSyDzl1S4u_D9IXppfuOhwZ9NOefDoCwQTdA";
 
   // Build GTFS Scheduled Fallback result
@@ -226,37 +228,40 @@ export async function fetchLiveTrafficETA(
   }
 
   try {
-    const response = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask":
-          "routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.travelAdvisory.speedReadingIntervals",
+    const response = await fetch(
+      "https://routes.googleapis.com/directions/v2:computeRoutes",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": apiKey,
+          "X-Goog-FieldMask":
+            "routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.travelAdvisory.speedReadingIntervals",
+        },
+        body: JSON.stringify({
+          origin: {
+            location: {
+              latLng: {
+                latitude: origin.lat,
+                longitude: origin.lon,
+              },
+            },
+          },
+          destination: {
+            location: {
+              latLng: {
+                latitude: destination.lat,
+                longitude: destination.lon,
+              },
+            },
+          },
+          travelMode: "DRIVE",
+          routingPreference: "TRAFFIC_AWARE",
+          extraComputations: ["TRAFFIC_ON_POLYLINE"],
+        }),
+        signal: AbortSignal.timeout(8000),
       },
-      body: JSON.stringify({
-        origin: {
-          location: {
-            latLng: {
-              latitude: origin.lat,
-              longitude: origin.lon,
-            },
-          },
-        },
-        destination: {
-          location: {
-            latLng: {
-              latitude: destination.lat,
-              longitude: destination.lon,
-            },
-          },
-        },
-        travelMode: "DRIVE",
-        routingPreference: "TRAFFIC_AWARE",
-        extraComputations: ["TRAFFIC_ON_POLYLINE"],
-      }),
-      signal: AbortSignal.timeout(8000),
-    });
+    );
 
     if (!response.ok) {
       console.warn(`Google Routes API returned HTTP ${response.status}`);
@@ -271,11 +276,14 @@ export async function fetchLiveTrafficETA(
     }
 
     // Traffic duration (e.g. "1188s")
-    const durationSeconds = Number.parseInt(String(route.duration).replace("s", ""), 10) || 0;
+    const durationSeconds =
+      Number.parseInt(String(route.duration).replace("s", ""), 10) || 0;
     // Static duration without traffic (e.g. "980s")
     const staticDurationSeconds =
-      Number.parseInt(String(route.staticDuration || route.duration).replace("s", ""), 10) ||
-      durationSeconds;
+      Number.parseInt(
+        String(route.staticDuration || route.duration).replace("s", ""),
+        10,
+      ) || durationSeconds;
 
     const liveMinutes = Math.max(1, Math.round(durationSeconds / 60));
     const trafficDelayMinutes = Math.max(
@@ -283,7 +291,8 @@ export async function fetchLiveTrafficETA(
       Math.round((durationSeconds - staticDurationSeconds) / 60),
     );
     const distanceMetersVal =
-      Number(route.distanceMeters) || Math.round(distanceMeters(origin, destination));
+      Number(route.distanceMeters) ||
+      Math.round(distanceMeters(origin, destination));
 
     // Decode polyline and extract traffic speed segments
     const encodedPoly = route.polyline?.encodedPolyline ?? "";
@@ -299,7 +308,10 @@ export async function fetchLiveTrafficETA(
     if (intervals.length > 0 && allCoords.length > 1) {
       for (const interval of intervals) {
         const start = Math.max(0, interval.startPolylinePointIndex ?? 0);
-        const end = Math.min(allCoords.length, (interval.endPolylinePointIndex ?? start) + 1);
+        const end = Math.min(
+          allCoords.length,
+          (interval.endPolylinePointIndex ?? start) + 1,
+        );
         if (end > start) {
           const segCoords = allCoords.slice(start, end);
           if (segCoords.length >= 2) {
@@ -320,7 +332,11 @@ export async function fetchLiveTrafficETA(
       });
     }
 
-    const badge = calculateDelayBadge(liveMinutes, scheduledMinutes, trafficDelayMinutes);
+    const badge = calculateDelayBadge(
+      liveMinutes,
+      scheduledMinutes,
+      trafficDelayMinutes,
+    );
     const arrivalDate = new Date(now + liveMinutes * 60 * 1000);
 
     const result: TrafficETAResult = {
@@ -344,7 +360,10 @@ export async function fetchLiveTrafficETA(
     etaCache.set(cacheKey, { data: result, cachedAt: now });
     return result;
   } catch (err) {
-    console.warn("Failed to fetch live traffic ETA from Google Routes API:", err);
+    console.warn(
+      "Failed to fetch live traffic ETA from Google Routes API:",
+      err,
+    );
     return buildFallback("Fetch exception");
   }
 }

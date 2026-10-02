@@ -1,0 +1,42 @@
+{
+  "Vanaz metro station": {
+    "lat": 18.5071,
+    "lon": 73.80527
+  },
+  "Anand Nagar metro station (Pune)": {
+    "lat": 18.50963,
+    "lon": 73.81408
+  },
+  "Garware College metro station": {
+    "lat": 18.51204,
+    "lon": 73.83799
+  },
+  "Deccan Gymkhana metro station": {
+    "lat": 18.51631,
+    "lon": 73.84447
+  },
+  "Chhatrapati Sambhaji Udyan metro station": {
+    "lat": 18.52014,
+    "lon": 73.84761
+  },
+  "Ramwadi metro station": {
+    "lat": 18.557144,
+    "lon": 73.90968
+  },
+  "Mangalwar Peth metro station": {
+    "lat": 18.53001,
+    "lon": 73.86521
+  },
+  "Pune Railway Station metro station": {
+    "lat": 18.52969,
+    "lon": 73.87256
+  },
+  "Ruby Hall Clinic metro station": {
+    "lat": 18.53263,
+    "lon": 73.8778
+  },
+  "Bund Garden metro station": {
+    "lat": 18.540162,
+    "lon": 73.8832
+  }
+}

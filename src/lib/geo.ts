@@ -8,7 +8,9 @@ export function distanceMeters(a: LatLng, b: LatLng): number {
   const dLon = toRad(b.lon - a.lon);
   const lat1 = toRad(a.lat);
   const lat2 = toRad(b.lat);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
   return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
@@ -59,7 +61,10 @@ export function formatAgo(iso: string, now = Date.now()): string {
 
 export const PUNE_CENTER: LatLng = { lat: 18.5204, lon: 73.8567 };
 
-export function findClosestPointIndex(points: [number, number][], target: LatLng): number {
+export function findClosestPointIndex(
+  points: [number, number][],
+  target: LatLng,
+): number {
   if (points.length === 0) return 0;
   let minD = Infinity;
   let bestIdx = 0;
@@ -126,13 +131,21 @@ export function interpolatePolyline(
 } {
   const clampedFraction = Math.max(0, Math.min(1, fraction));
   if (points.length === 0) {
-    return { point: { lat: 0, lon: 0 }, completed: [], remaining: [], bearing: 0 };
+    return {
+      point: { lat: 0, lon: 0 },
+      completed: [],
+      remaining: [],
+      bearing: 0,
+    };
   }
   if (points.length === 1 || clampedFraction === 0) {
     const p = points[0]!;
     const next = points[1];
     const bearing = next
-      ? calculateBearing({ lat: p[1], lon: p[0] }, { lat: next[1], lon: next[0] })
+      ? calculateBearing(
+          { lat: p[1], lon: p[0] },
+          { lat: next[1], lon: next[0] },
+        )
       : 0;
     return {
       point: { lon: p[0], lat: p[1] },
@@ -145,7 +158,10 @@ export function interpolatePolyline(
     const p = points[points.length - 1]!;
     const prev = points[points.length - 2];
     const bearing = prev
-      ? calculateBearing({ lat: prev[1], lon: prev[0] }, { lat: p[1], lon: p[0] })
+      ? calculateBearing(
+          { lat: prev[1], lon: prev[0] },
+          { lat: p[1], lon: p[0] },
+        )
       : 0;
     return {
       point: { lon: p[0], lat: p[1] },
@@ -160,14 +176,22 @@ export function interpolatePolyline(
   for (let i = 0; i < points.length - 1; i++) {
     const a = points[i]!;
     const b = points[i + 1]!;
-    const len = distanceMeters({ lat: a[1], lon: a[0] }, { lat: b[1], lon: b[0] });
+    const len = distanceMeters(
+      { lat: a[1], lon: a[0] },
+      { lat: b[1], lon: b[0] },
+    );
     segmentLengths.push(len);
     totalMeters += len;
   }
 
   if (totalMeters === 0) {
     const p = points[0]!;
-    return { point: { lon: p[0], lat: p[1] }, completed: [p], remaining: points, bearing: 0 };
+    return {
+      point: { lon: p[0], lat: p[1] },
+      completed: [p],
+      remaining: points,
+      bearing: 0,
+    };
   }
 
   const targetMeters = clampedFraction * totalMeters;
@@ -175,8 +199,12 @@ export function interpolatePolyline(
 
   for (let i = 0; i < segmentLengths.length; i++) {
     const segLen = segmentLengths[i]!;
-    if (accumulated + segLen >= targetMeters || i === segmentLengths.length - 1) {
-      const segFraction = segLen > 0 ? (targetMeters - accumulated) / segLen : 0;
+    if (
+      accumulated + segLen >= targetMeters ||
+      i === segmentLengths.length - 1
+    ) {
+      const segFraction =
+        segLen > 0 ? (targetMeters - accumulated) / segLen : 0;
       const a = points[i]!;
       const b = points[i + 1]!;
       const curLon = a[0] + (b[0] - a[0]) * segFraction;
@@ -185,7 +213,10 @@ export function interpolatePolyline(
 
       const completed = [...points.slice(0, i + 1), curPoint];
       const remaining = [curPoint, ...points.slice(i + 1)];
-      const bearing = calculateBearing({ lat: a[1], lon: a[0] }, { lat: b[1], lon: b[0] });
+      const bearing = calculateBearing(
+        { lat: a[1], lon: a[0] },
+        { lat: b[1], lon: b[0] },
+      );
 
       return {
         point: { lon: curLon, lat: curLat },

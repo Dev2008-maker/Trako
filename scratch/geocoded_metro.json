@@ -1,0 +1,304 @@
+[
+  {
+    "lineId": "purple",
+    "code": "PCMC",
+    "name": "PCMC",
+    "query": "PCMC Metro Station, Pune",
+    "operational": true,
+    "lat": 18.627929082499687,
+    "lon": 73.80098272114992,
+    "geocodedName": "Pimpri-Chinchwad"
+  },
+  {
+    "lineId": "purple",
+    "code": "STN",
+    "name": "Sant Tukaram Nagar",
+    "query": "Sant Tukaram Nagar Metro Station, Pune",
+    "operational": true,
+    "lat": 18.504509850421748,
+    "lon": 73.90212882310152,
+    "geocodedName": "Fatima Nagar"
+  },
+  {
+    "lineId": "purple",
+    "code": "BHO",
+    "name": "Bhosari (Nashik Phata)",
+    "query": "Bhosari Metro Station Nashik Phata, Pune",
+    "operational": true,
+    "lat": 18.521373930033782,
+    "lon": 73.85450687259436,
+    "geocodedName": "Pune"
+  },
+  {
+    "lineId": "purple",
+    "code": "KAS",
+    "name": "Kasarwadi",
+    "query": "Kasarwadi Metro Station, Pune",
+    "operational": true,
+    "lat": 18.60127667985043,
+    "lon": 73.82369834929705,
+    "geocodedName": "Kasarwadi"
+  },
+  {
+    "lineId": "purple",
+    "code": "PHU",
+    "name": "Phugewadi",
+    "query": "Phugewadi Metro Station, Pune",
+    "operational": true,
+    "lat": 35.73616039678666,
+    "lon": -78.84643111377954,
+    "geocodedName": "Metro Station"
+  },
+  {
+    "lineId": "purple",
+    "code": "DAP",
+    "name": "Dapodi",
+    "query": "Dapodi Metro Station, Pune",
+    "operational": true,
+    "lat": 35.73616039678666,
+    "lon": -78.84643111377954,
+    "geocodedName": "Metro Station"
+  },
+  {
+    "lineId": "purple",
+    "code": "BOP",
+    "name": "Bopodi",
+    "query": "Bopodi Metro Station, Pune",
+    "operational": true,
+    "lat": 35.73616039678666,
+    "lon": -78.84643111377954,
+    "geocodedName": "Metro Station"
+  },
+  {
+    "lineId": "purple",
+    "code": "KHD",
+    "name": "Khadki",
+    "query": "Khadki Metro Station, Pune",
+    "operational": false,
+    "lat": 18.568175401283447,
+    "lon": 73.85077860206366,
+    "geocodedName": "Khadki"
+  },
+  {
+    "lineId": "purple",
+    "code": "RGH",
+    "name": "Range Hill",
+    "query": "Range Hill Metro Station, Pune",
+    "operational": true,
+    "lat": -26.489766188995198,
+    "lon": 148.7876097445793,
+    "geocodedName": "Orange Hill"
+  },
+  {
+    "lineId": "purple",
+    "code": "SHN",
+    "name": "Shivaji Nagar",
+    "query": "Shivajinagar Metro Station, Pune",
+    "operational": true,
+    "lat": 18.52790861597355,
+    "lon": 73.84294118732214,
+    "geocodedName": "Shivajinagar"
+  },
+  {
+    "lineId": "purple",
+    "code": "DST",
+    "name": "District Court",
+    "query": "District Court Metro Station, Pune",
+    "interchange": true,
+    "operational": true,
+    "lat": 18.521373930033782,
+    "lon": 73.85450687259436,
+    "geocodedName": "Pune"
+  },
+  {
+    "lineId": "purple",
+    "code": "BWP",
+    "name": "Budhwar Peth",
+    "query": "Budhwar Peth Metro Station, Pune",
+    "operational": true,
+    "lat": 18.516674511375534,
+    "lon": 73.85481448844075,
+    "geocodedName": "Budhwar Peth"
+  },
+  {
+    "lineId": "purple",
+    "code": "MND",
+    "name": "Mandai",
+    "query": "Mandai Metro Station, Pune",
+    "operational": true,
+    "lat": 18.521373930033782,
+    "lon": 73.85450687259436,
+    "geocodedName": "Pune"
+  },
+  {
+    "lineId": "purple",
+    "code": "SWG",
+    "name": "Swargate",
+    "query": "Swargate Metro Station, Pune",
+    "operational": true,
+    "lat": 18.500677017825048,
+    "lon": 73.85862540453672,
+    "geocodedName": "Swargate"
+  },
+  {
+    "lineId": "aqua",
+    "code": "VNZ",
+    "name": "Vanaz",
+    "query": "Vanaz Metro Station, Pune",
+    "operational": true,
+    "lat": 35.73616039678666,
+    "lon": -78.84643111377954,
+    "geocodedName": "Metro Station"
+  },
+  {
+    "lineId": "aqua",
+    "code": "AND",
+    "name": "Anand Nagar",
+    "query": "Anand Nagar Metro Station, Pune",
+    "operational": true,
+    "lat": 18.47860484639809,
+    "lon": 73.82438499480486,
+    "geocodedName": "Anand Nagar"
+  },
+  {
+    "lineId": "aqua",
+    "code": "IDL",
+    "name": "Ideal Colony",
+    "query": "Ideal Colony Metro Station, Pune",
+    "operational": true,
+    "lat": 18.531430417394837,
+    "lon": 73.83745104074478,
+    "geocodedName": "Model Colony"
+  },
+  {
+    "lineId": "aqua",
+    "code": "NAL",
+    "name": "Nal Stop",
+    "query": "Nal Stop Metro Station, Pune",
+    "operational": true,
+    "lat": 18.521373930033782,
+    "lon": 73.85450687259436,
+    "geocodedName": "Pune"
+  },
+  {
+    "lineId": "aqua",
+    "code": "GWC",
+    "name": "Garware College",
+    "query": "Garware College Metro Station, Pune",
+    "operational": true,
+    "lat": 18.521373930033782,
+    "lon": 73.85450687259436,
+    "geocodedName": "Pune"
+  },
+  {
+    "lineId": "aqua",
+    "code": "DEC",
+    "name": "Deccan Gymkhana",
+    "query": "Deccan Gymkhana Metro Station, Pune",
+    "operational": true,
+    "lat": 18.515892746010813,
+    "lon": 73.84115986526012,
+    "geocodedName": "Deccan Gymkhana"
+  },
+  {
+    "lineId": "aqua",
+    "code": "CSU",
+    "name": "Chhatrapati Sambhaji Udyan",
+    "query": "Chhatrapati Sambhaji Udyan Metro Station, Pune",
+    "operational": true,
+    "lat": 35.73616039678666,
+    "lon": -78.84643111377954,
+    "geocodedName": "Metro Station"
+  },
+  {
+    "lineId": "aqua",
+    "code": "PMC",
+    "name": "PMC Bhavan",
+    "query": "PMC Metro Station Pune Municipal Corporation, Pune",
+    "operational": true,
+    "lat": 18.521373930033782,
+    "lon": 73.85450687259436,
+    "geocodedName": "Pune"
+  },
+  {
+    "lineId": "aqua",
+    "code": "DST_A",
+    "name": "District Court",
+    "query": "District Court Metro Station, Pune",
+    "interchange": true,
+    "operational": true,
+    "lat": 18.521373930033782,
+    "lon": 73.85450687259436,
+    "geocodedName": "Pune"
+  },
+  {
+    "lineId": "aqua",
+    "code": "MGP",
+    "name": "Mangalwar Peth (RTO)",
+    "query": "Mangalwar Peth Metro Station, Pune",
+    "operational": true,
+    "lat": 18.52433905624947,
+    "lon": 73.85920777916908,
+    "geocodedName": "Mangalwar Peth"
+  },
+  {
+    "lineId": "aqua",
+    "code": "PRS",
+    "name": "Pune Railway Station",
+    "query": "Pune Railway Station Metro Station, Pune",
+    "operational": true,
+    "lat": 18.521373930033782,
+    "lon": 73.85450687259436,
+    "geocodedName": "Pune"
+  },
+  {
+    "lineId": "aqua",
+    "code": "RHC",
+    "name": "Ruby Hall Clinic",
+    "query": "Ruby Hall Clinic Metro Station, Pune",
+    "operational": true,
+    "lat": 18.521373930033782,
+    "lon": 73.85450687259436,
+    "geocodedName": "Pune"
+  },
+  {
+    "lineId": "aqua",
+    "code": "BDG",
+    "name": "Bund Garden",
+    "query": "Bund Garden Metro Station, Pune",
+    "operational": true,
+    "lat": 41.839864479089144,
+    "lon": -89.38209043007049,
+    "geocodedName": "garden"
+  },
+  {
+    "lineId": "aqua",
+    "code": "YRW",
+    "name": "Yerawada",
+    "query": "Yerawada Metro Station, Pune",
+    "operational": true,
+    "lat": 18.55868556412667,
+    "lon": 73.89549504965544,
+    "geocodedName": "Yerawada"
+  },
+  {
+    "lineId": "aqua",
+    "code": "KLN",
+    "name": "Kalyani Nagar",
+    "query": "Kalyani Nagar Metro Station, Pune",
+    "operational": true,
+    "lat": 18.548138315384712,
+    "lon": 73.90255127102137,
+    "geocodedName": "Kalyani Nagar"
+  },
+  {
+    "lineId": "aqua",
+    "code": "RMW",
+    "name": "Ramwadi",
+    "query": "Ramwadi Metro Station, Pune",
+    "operational": true,
+    "lat": 18.558009196818734,
+    "lon": 73.91116417944431,
+    "geocodedName": "Ramwadi"
+  }
+]
