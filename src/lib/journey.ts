@@ -274,10 +274,10 @@ export function getRecentJourneys(): JourneyState[] {
         },
         {
           id: "recent-2",
-          route_id: "r1",
+          route_id: "103",
           route_no: "103",
           route_name: "Katraj Depot – Kothrud Depot",
-          trip_id: "trip-r1-1",
+          trip_id: "trip-103-1",
           boarding_stop: {
             id: "s4",
             code: "SWRG",
@@ -369,12 +369,14 @@ export function saveRecentAsSavedJourney(
 // SAVED / BOOKMARKED ROUTES
 // ============================================================================
 export function getSavedRoutes(): string[] {
-  if (typeof window === "undefined") return ["r1", "r2"];
+  if (typeof window === "undefined") return ["103", "215"];
   try {
     const raw = localStorage.getItem(SAVED_ROUTES_KEY);
-    return raw ? JSON.parse(raw) : ["r1", "r2"];
+    if (!raw) return ["103", "215"];
+    const parsed = JSON.parse(raw) as string[];
+    return parsed.map((id) => (id === "r1" ? "103" : id === "r2" ? "215" : id));
   } catch {
-    return ["r1", "r2"];
+    return ["103", "215"];
   }
 }
 
@@ -448,7 +450,7 @@ export function getSavedRoutesDetailed(): SavedRouteItem[] {
     if (!raw) {
       return [
         {
-          route_id: "r1",
+          route_id: "103",
           route_no: "103",
           route_name: "Katraj Depot – Kothrud Depot",
           origin_stop: "Katraj Depot",
@@ -458,7 +460,7 @@ export function getSavedRoutesDetailed(): SavedRouteItem[] {
           created_at: new Date().toISOString(),
         },
         {
-          route_id: "r2",
+          route_id: "215",
           route_no: "215",
           route_name: "Pune Station – Hinjawadi Phase 1",
           origin_stop: "Pune Station",
@@ -559,7 +561,7 @@ export function getSearchHistory(): SearchHistoryItem[] {
           type: "bus",
           query: "Bus 103",
           subtitle: "Katraj – Kothrud Depot",
-          routeId: "r1",
+          routeId: "103",
           timestamp: Date.now() - 12 * 3600 * 1000,
         },
       ];
@@ -693,7 +695,7 @@ export function getUpcomingScheduledTrips(): ScheduledTrip[] {
   return [
     {
       id: "sched-1",
-      route_id: "r1",
+      route_id: "103",
       route_no: "103",
       route_name: "Katraj Depot – Kothrud Depot",
       origin: "Swargate",
@@ -705,11 +707,11 @@ export function getUpcomingScheduledTrips(): ScheduledTrip[] {
     },
     {
       id: "sched-2",
-      route_id: "r2",
+      route_id: "215",
       route_no: "215",
-      route_name: "Pune Station – Hinjawadi Phase 1",
-      origin: "Pune Station",
-      destination: "Hinjawadi Phase 1",
+      route_name: "Swargate – Chintamani Dnyanpith",
+      origin: "Swargate",
+      destination: "Chintamani Dnyanpith",
       scheduled_departure: "08:25 AM",
       departure_minutes_from_now: 14,
       fare: "₹35",
@@ -717,14 +719,14 @@ export function getUpcomingScheduledTrips(): ScheduledTrip[] {
     },
     {
       id: "sched-3",
-      route_id: "r1",
-      route_no: "31",
-      route_name: "Hadapsar – Pune Station",
-      origin: "Hadapsar Gadital",
-      destination: "Pune Station",
+      route_id: "100",
+      route_no: "100",
+      route_name: "Hinjawadi Phase 3 – Ma Na Pa",
+      origin: "Hinjawadi Phase 3",
+      destination: "Ma Na Pa Dengle Pul",
       scheduled_departure: "08:35 AM",
       departure_minutes_from_now: 24,
-      fare: "₹15",
+      fare: "₹25",
       frequency: "Every 8 mins",
     },
   ];

@@ -34,6 +34,7 @@ import { MetroStationDetailSheet } from "@/components/metro/MetroStationDetailSh
 import { MetroRoutePlannerModal } from "@/components/metro/MetroRoutePlannerModal";
 import { MetroStationSearch } from "@/components/metro/MetroStationSearch";
 import { JourneyPlannerModal } from "@/components/planner/JourneyPlannerModal";
+import type { JourneyOption } from "@/services/journeyPlanner";
 import { SavedJourneysCard } from "@/components/home/SavedJourneysCard";
 import { Calendar } from "lucide-react";
 
@@ -84,6 +85,8 @@ function Home() {
   const [destination, setDestination] = useState<Destination | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [plannerPreviewJourney, setPlannerPreviewJourney] =
+    useState<JourneyOption | null>(null);
 
   // When demo mode is on, simulate presence at Pune Shivajinagar.
   // When off, use actual coordinates if available, or Pune center as map baseline.
@@ -153,6 +156,20 @@ function Home() {
       : effectiveUser;
   }, [transitMode, selectedMetroStationId, destination, effectiveUser]);
 
+  const plannerRouteLine = useMemo<[number, number][] | undefined>(() => {
+    if (!plannerPreviewJourney) return undefined;
+    const coords: [number, number][] = [];
+    for (const leg of plannerPreviewJourney.legs) {
+      if (leg.originCoords) {
+        coords.push([leg.originCoords.lon, leg.originCoords.lat]);
+      }
+      if (leg.destinationCoords) {
+        coords.push([leg.destinationCoords.lon, leg.destinationCoords.lat]);
+      }
+    }
+    return coords.length >= 2 ? coords : undefined;
+  }, [plannerPreviewJourney]);
+
   return (
     <AppShell bare>
       <HomeMap
@@ -165,6 +182,9 @@ function Home() {
             : (selectedStopId ?? nearest?.stop.id ?? null)
         }
         destination={transitMode === "metro" ? null : destination}
+        line={plannerRouteLine}
+        boardingStopId={plannerPreviewJourney?.boardingStopId ?? null}
+        destinationStopId={plannerPreviewJourney?.destinationStopId ?? null}
         buses={busMarkers}
         onStopClick={setSelectedStopId}
         isDemoMode={demoMode}
@@ -323,10 +343,19 @@ function Home() {
                   BUSES TOWARDS {destination.name.toUpperCase()}
                 </p>
                 {matches.length === 0 ? (
-                  <p className="rounded-2xl bg-white border border-border/80 p-4 text-sm text-muted-foreground shadow-xs">
-                    No direct PMPML route found from your nearby stops to this
-                    destination yet.
-                  </p>
+                  <div className="rounded-2xl bg-white border border-border/80 p-4 text-sm text-muted-foreground shadow-xs space-y-2.5">
+                    <p>
+                      No direct PMPML bus found from your immediate nearby stop
+                      to this destination.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowJourneyPlanner(true)}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:opacity-95 transition"
+                    >
+                      <span>🗺️</span> Plan Complete Journey (Transfers + Metro)
+                    </button>
+                  </div>
                 ) : (
                   matches.map((match) => {
                     const boarding = stops.find(
@@ -559,10 +588,30 @@ function Home() {
       {showJourneyPlanner && (
         <JourneyPlannerModal
           isOpen={showJourneyPlanner}
-          onClose={() => setShowJourneyPlanner(false)}
+          onClose={() => {
+            setShowJourneyPlanner(false);
+            setPlannerPreviewJourney(null);
+          }}
           userCoords={origin}
           stops={stops}
           initialDestination={destination}
+          onSelectJourneyPreview={(opt, _orig, dest) => {
+            setPlannerPreviewJourney(opt);
+            setDestination({
+              name: dest.name,
+              stopId: dest.stopId,
+              lat: dest.coords.lat,
+              lon: dest.coords.lon,
+            });
+          }}
+          onPreviewPlace={(loc) => {
+            setDestination({
+              name: loc.name,
+              stopId: loc.stopId,
+              lat: loc.coords.lat,
+              lon: loc.coords.lon,
+            });
+          }}
         />
       )}
     </AppShell>

@@ -44,7 +44,7 @@ export const DEFAULT_SAVED_JOURNEYS: SavedJourney[] = [
     destinationStopId: "s4",
     destinationLat: 18.501,
     destinationLon: 73.8586,
-    preferredRouteId: "r1",
+    preferredRouteId: "103",
     preferredRouteNo: "103",
     transitMode: "bus",
     alarmStopsAhead: 1,
@@ -64,7 +64,7 @@ export const DEFAULT_SAVED_JOURNEYS: SavedJourney[] = [
     destinationStopId: "s7",
     destinationLat: 18.5074,
     destinationLon: 73.8077,
-    preferredRouteId: "r1",
+    preferredRouteId: "103",
     preferredRouteNo: "103",
     transitMode: "bus",
     alarmStopsAhead: 2,
@@ -84,8 +84,8 @@ export const DEFAULT_SAVED_JOURNEYS: SavedJourney[] = [
     destinationStopId: "s18",
     destinationLat: 18.5983,
     destinationLon: 73.7125,
-    preferredRouteId: "r2",
-    preferredRouteNo: "215",
+    preferredRouteId: "100",
+    preferredRouteNo: "100",
     transitMode: "all",
     alarmStopsAhead: 1,
     isFavourite: false,
@@ -93,6 +93,16 @@ export const DEFAULT_SAVED_JOURNEYS: SavedJourney[] = [
     updated_at: new Date().toISOString(),
   },
 ];
+
+function sanitizeSavedJourney(j: SavedJourney): SavedJourney {
+  let routeId = j.preferredRouteId;
+  if (!routeId || routeId === "r1") routeId = j.preferredRouteNo || "103";
+  else if (routeId === "r2") routeId = j.preferredRouteNo || "215";
+  return {
+    ...j,
+    preferredRouteId: routeId,
+  };
+}
 
 /**
  * Retrieve saved journeys.
@@ -110,9 +120,10 @@ export function getSavedJourneys(): SavedJourney[] {
       return DEFAULT_SAVED_JOURNEYS;
     }
     const parsed = JSON.parse(raw) as SavedJourney[];
-    return Array.isArray(parsed) && parsed.length > 0
-      ? parsed
-      : DEFAULT_SAVED_JOURNEYS;
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed.map(sanitizeSavedJourney);
+    }
+    return DEFAULT_SAVED_JOURNEYS;
   } catch {
     return DEFAULT_SAVED_JOURNEYS;
   }

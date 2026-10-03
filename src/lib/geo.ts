@@ -28,16 +28,44 @@ export function formatWalk(meters: number): string {
   return `${formatDistance(meters)} · ${walkMinutes(meters)} min walk`;
 }
 
-/** Turns a "HH:MM:SS" schedule time into minutes from midnight. */
-export function timeToMinutes(time: string): number {
-  const [h = "0", m = "0"] = time.split(":");
-  return Number(h) * 60 + Number(m);
+/**
+ * Parse a GTFS time string to { hours, minutes, seconds }.
+ * Handles standard "HH:MM:SS" and extended GTFS times like "25:10:00".
+ * Returns null for invalid input instead of producing NaN.
+ */
+export function parseGtfsTime(
+  time: string | null | undefined,
+): { hours: number; minutes: number; seconds: number } | null {
+  if (!time || typeof time !== "string") return null;
+  const cleaned = time.trim();
+  const parts = cleaned.split(":");
+  if (parts.length < 2) return null;
+  const h = parseInt(parts[0] ?? "", 10);
+  const m = parseInt(parts[1] ?? "", 10);
+  const s = parts[2] !== undefined ? parseInt(parts[2], 10) : 0;
+  if (isNaN(h) || isNaN(m) || isNaN(s)) return null;
+  return { hours: h, minutes: m, seconds: s };
 }
 
+/** Turns a "HH:MM:SS" schedule time into minutes from midnight.
+ *  Handles GTFS extended times (e.g. 25:10:00 → 1510 min). */
+export function timeToMinutes(time: string): number {
+  const parsed = parseGtfsTime(time);
+  if (!parsed) return 0;
+  return parsed.hours * 60 + parsed.minutes;
+}
+
+/**
+ * Format a GTFS time string ("HH:MM:SS") into a display-friendly "H:MM AM/PM".
+ * Handles extended GTFS times (25:10:00 → 1:10 AM next day).
+ * Never returns NaN — falls back to the raw input on parse failure.
+ */
 export function formatClock(time: string): string {
-  const total = timeToMinutes(time);
-  const h24 = Math.floor(total / 60) % 24;
-  const m = total % 60;
+  const parsed = parseGtfsTime(time);
+  if (!parsed) return time; // Return raw string rather than NaN
+  // Normalize hours to 0-23 range (GTFS times can exceed 24)
+  const h24 = ((parsed.hours % 24) + 24) % 24;
+  const m = parsed.minutes;
   const suffix = h24 < 12 ? "AM" : "PM";
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
   return `${h12}:${String(m).padStart(2, "0")} ${suffix}`;

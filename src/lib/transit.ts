@@ -1,6 +1,12 @@
 import { queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { distanceMeters, minutesFromNow, type LatLng } from "./geo";
+import {
+  distanceMeters,
+  minutesFromNow,
+  formatClock,
+  timeToMinutes,
+  type LatLng,
+} from "./geo";
 import { getRouteShapeCoordinates } from "@/services/gtfsShapes";
 
 export type Stop = {
@@ -52,21 +58,45 @@ export const stopsQuery = queryOptions({
   staleTime: 10 * 60_000,
   queryFn: async (): Promise<Stop[]> => {
     try {
-      const { data, error } = await supabase
-        .from("stops")
-        .select("stop_id, stop_name, stop_lat, stop_lon")
-        .order("stop_name");
+      // PostgREST limits queries to 1,000 rows. Use parallel range queries to load all ~6,713 stops.
+      const ranges = [
+        [0, 999],
+        [1000, 1999],
+        [2000, 2999],
+        [3000, 3999],
+        [4000, 4999],
+        [5000, 5999],
+        [6000, 6999],
+      ] as const;
 
-      if (error) {
-        console.error("Failed to query stops from Supabase:", error);
-        throw error;
+      const results = await Promise.all(
+        ranges.map(([start, end]) =>
+          supabase
+            .from("stops")
+            .select("stop_id, stop_name, stop_lat, stop_lon")
+            .range(start, end)
+            .order("stop_id"),
+        ),
+      );
+
+      const allRows: Array<{
+        stop_id: string | number;
+        stop_name: string | null;
+        stop_lat: number | string | null;
+        stop_lon: number | string | null;
+      }> = [];
+
+      for (const res of results) {
+        if (res.data) {
+          allRows.push(...res.data);
+        }
       }
 
-      if (!data || data.length === 0) {
+      if (allRows.length === 0) {
         return [];
       }
 
-      return data.map((s) => ({
+      return allRows.map((s) => ({
         id: String(s.stop_id),
         code: String(s.stop_id),
         name: s.stop_name || "Bus Stop",
@@ -498,7 +528,8 @@ export function routeDetailQuery(routeId: string | undefined) {
     gcTime: 30 * 60_000,
     queryFn: async (): Promise<RouteDetailData> => {
       if (!routeId) throw new Error("Route ID is required");
-      const actualRouteId = routeId;
+      const actualRouteId =
+        routeId === "r1" ? "103" : routeId === "r2" ? "215" : routeId;
       const tStart = performance.now();
       console.log(
         `[TRAKO] [RouteDetail] Starting lookup for route: ${actualRouteId}`,
@@ -731,6 +762,48 @@ export function routeDetailQuery(routeId: string | undefined) {
         };
       });
 
+      // Fetch actual origin departures from GTFS stop_times
+      let realGtfsDepartures: string[] = [];
+      try {
+        const targetRouteId = route?.id || actualRouteId;
+        const targetDirection = repTrip?.direction_id ?? 0;
+        const { data: routeTrips } = await supabase
+          .from("trips")
+          .select("trip_id")
+          .eq("route_id", targetRouteId)
+          .eq("direction_id", targetDirection);
+
+        if (routeTrips && routeTrips.length > 0) {
+          const tripIds = routeTrips.map((t) => t.trip_id);
+          const { data: originSts } = await supabase
+            .from("stop_times")
+            .select("departure_time")
+            .in("trip_id", tripIds.slice(0, 500))
+            .eq("stop_sequence", 1)
+            .order("departure_time", { ascending: true })
+            .limit(1000);
+
+          if (originSts && originSts.length > 0) {
+            const rawTimes = [
+              ...new Set(
+                originSts
+                  .map((s) => s.departure_time?.trim())
+                  .filter((t): t is string => Boolean(t && t.length >= 4)),
+              ),
+            ];
+            rawTimes.sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
+            if (rawTimes.length > 0) {
+              realGtfsDepartures = rawTimes;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(
+          "[TRAKO] Could not fetch real GTFS origin departures:",
+          err,
+        );
+      }
+
       const generateDepartures = (
         startH: number,
         startM: number,
@@ -742,29 +815,45 @@ export function routeDetailQuery(routeId: string | undefined) {
         let cur = startH * 60 + startM;
         const end = endH * 60 + endM;
         while (cur <= end) {
-          const h = Math.floor(cur / 60) % 24;
+          const h = Math.floor(cur / 60);
           const m = cur % 60;
-          const h12 = h % 12 === 0 ? 12 : h % 12;
-          const suff = h < 12 ? "AM" : "PM";
-          list.push(`${h12}:${String(m).padStart(2, "0")} ${suff}`);
+          list.push(
+            `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`,
+          );
           cur += stepM;
         }
         return list;
       };
 
       const timetable = {
-        weekday: generateDepartures(5, 30, 23, 15, 10),
-        saturday: generateDepartures(5, 45, 23, 0, 15),
-        sunday: generateDepartures(6, 0, 22, 30, 20),
+        weekday:
+          realGtfsDepartures.length > 0
+            ? realGtfsDepartures
+            : generateDepartures(5, 30, 23, 15, 10),
+        saturday:
+          realGtfsDepartures.length > 0
+            ? realGtfsDepartures
+            : generateDepartures(5, 45, 23, 0, 15),
+        sunday:
+          realGtfsDepartures.length > 0
+            ? realGtfsDepartures
+            : generateDepartures(6, 0, 22, 30, 20),
       };
+
+      const firstTime = timetable.weekday[0] ?? "05:30:00";
+      const lastTime =
+        timetable.weekday[timetable.weekday.length - 1] ?? "23:15:00";
 
       return {
         route: route ?? null,
         stops: stopList,
         line: resolvedLine,
-        firstBus: "05:30 AM",
-        lastBus: "11:15 PM",
-        frequency: "Every 10–15 mins",
+        firstBus: formatClock(firstTime),
+        lastBus: formatClock(lastTime),
+        frequency:
+          realGtfsDepartures.length > 20
+            ? "Every 10–15 mins"
+            : "Every 15–20 mins",
         fare: "₹5 – ₹25",
         status: "Active Service",
         totalStops: stopList.length,

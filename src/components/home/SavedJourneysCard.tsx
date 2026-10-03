@@ -62,7 +62,9 @@ export function SavedJourneysCard({ onStartJourney }: SavedJourneysCardProps) {
     }
 
     // Default route start
-    const routeId = sj.preferredRouteId || "r1";
+    const rawRoute = sj.preferredRouteId || sj.preferredRouteNo || "103";
+    const routeId =
+      rawRoute === "r1" ? "103" : rawRoute === "r2" ? "215" : rawRoute;
     navigate({
       to: "/routes/$routeId",
       params: { routeId },

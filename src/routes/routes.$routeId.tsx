@@ -2136,21 +2136,37 @@ function RouteDetailsPage() {
 
             {/* Departures Grid */}
             <div className="mt-3 flex-1 overflow-y-auto space-y-1.5 pr-1">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                Origin Departures from {route.origin}
-              </p>
-              <div className="grid grid-cols-4 gap-2">
-                {routeData.timetable[timetableTab]?.map((time, idx) => (
-                  <div
-                    key={idx}
-                    className="flex flex-col items-center justify-center rounded-xl bg-tint p-2 text-center border border-border/60"
-                  >
-                    <span className="text-xs font-bold text-foreground">
-                      {formatClock(time)}
-                    </span>
-                  </div>
-                ))}
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground truncate">
+                  Origin Departures from {route.origin}
+                </p>
+                <span className="text-[10px] text-muted-foreground font-medium shrink-0">
+                  {routeData.timetable[timetableTab]?.length ?? 0} trips
+                </span>
               </div>
+              {routeData.timetable[timetableTab] &&
+              routeData.timetable[timetableTab]!.length > 0 ? (
+                <div className="grid grid-cols-4 gap-2">
+                  {routeData.timetable[timetableTab]!.map((time, idx) => {
+                    const formatted = formatClock(time);
+                    if (!formatted || formatted.includes("NaN")) return null;
+                    return (
+                      <div
+                        key={idx}
+                        className="flex flex-col items-center justify-center rounded-xl bg-tint p-2 text-center border border-border/60 hover:border-primary/40 transition"
+                      >
+                        <span className="text-xs font-bold text-foreground">
+                          {formatted}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-4 text-center text-xs text-muted-foreground bg-tint rounded-xl">
+                  No scheduled departures available for this service day.
+                </div>
+              )}
             </div>
           </div>
         </div>
